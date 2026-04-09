@@ -1,0 +1,15 @@
+'use strict';
+
+module.exports = {
+    registerCustomer: require('./register-customer.service'),
+    loginCustomer: require('./login-customer.service'),
+    logoutCustomer: require('./logout-customer.service'),
+    refreshCustomerToken: require('./refresh-customer-token.service'),
+    getCustomerProfile: require('./get-customer-profile.service'),
+    changeCustomerPassword: require('./change-customer-password.service'),
+    forgotCustomerPassword: require('./forgot-customer-password.service'),
+    verifyCustomerOtp: require('./verify-customer-otp.service'),
+    resetCustomerPassword: require('./reset-customer-password.service'),
+    getCustomerGoogleAuthUrl: require('./get-customer-google-auth-url.service'),
+    googleCustomerLogin: require('./google-customer-login.service'),
+};
