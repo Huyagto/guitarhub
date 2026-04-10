@@ -10,18 +10,25 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { salesChartData } from "@/lib/mock-data"
+interface SalesChartPoint {
+  month: string
+  sales: number
+}
 
-export function SalesChart() {
+interface SalesChartProps {
+  data: SalesChartPoint[]
+}
+
+export function SalesChart({ data }: SalesChartProps) {
   return (
     <Card className="bg-card border-border">
       <CardHeader>
-        <CardTitle className="text-card-foreground">Sales Overview</CardTitle>
+        <CardTitle className="text-card-foreground">Tổng quan doanh thu</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={salesChartData}>
+            <AreaChart data={data}>
               <defs>
                 <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -55,7 +62,7 @@ export function SalesChart() {
                   color: "hsl(var(--card-foreground))",
                 }}
                 labelStyle={{ color: "hsl(var(--card-foreground))" }}
-                formatter={(value: number) => [`$${value.toLocaleString()}`, "Sales"]}
+                formatter={(value: number) => [`$${value.toLocaleString()}`, "Doanh thu"]}
               />
               <Area
                 type="monotone"

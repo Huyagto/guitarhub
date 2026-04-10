@@ -4,6 +4,15 @@ const cookieParser = require('cookie-parser');
 const { clientOrigins } = require('./config');
 const { errorMiddleware } = require('./core/middlewares');
 const { customerAuthRoutes, staffAuthRoutes, managerAuthRoutes } = require('./modules/auth/routes');
+const { customerProductRoutes, staffProductRoutes, managerProductRoutes } = require('./modules/product');
+const { customerCategoryRoutes, staffCategoryRoutes, managerCategoryRoutes } = require('./modules/category');
+const { customerBrandRoutes, managerBrandRoutes } = require('./modules/brand');
+const { customerCartRoutes } = require('./modules/cart');
+const { paymentCustomerRoutes } = require('./modules/payment');
+const { managerOrderRoutes } = require('./modules/order');
+const { managerInventoryRoutes } = require('./modules/inventory');
+const { managerReportRoutes } = require('./modules/report');
+const { managerManagementRoutes, staffManagementRoutes } = require('./modules/management');
 
 const app = express();
 
@@ -25,6 +34,21 @@ app.use(cookieParser());
 app.use('/api/auth', customerAuthRoutes);
 app.use('/api/staff/auth', staffAuthRoutes);
 app.use('/api/manager/auth', managerAuthRoutes);
+app.use('/api/products', customerProductRoutes);
+app.use('/api/categories', customerCategoryRoutes);
+app.use('/api/brands', customerBrandRoutes);
+app.use('/api/cart', customerCartRoutes);
+app.use('/api/payments', paymentCustomerRoutes);
+app.use('/api/staff/products', staffProductRoutes);
+app.use('/api/staff/categories', staffCategoryRoutes);
+app.use('/api/manager/products', managerProductRoutes);
+app.use('/api/manager/categories', managerCategoryRoutes);
+app.use('/api/manager/brands', managerBrandRoutes);
+app.use('/api/manager/orders', managerOrderRoutes);
+app.use('/api/manager/inventory', managerInventoryRoutes);
+app.use('/api/manager/reports', managerReportRoutes);
+app.use('/api/manager', managerManagementRoutes);
+app.use('/api/staff/pos', staffManagementRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

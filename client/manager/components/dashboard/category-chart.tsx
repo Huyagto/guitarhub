@@ -2,7 +2,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
-import { categoryDistribution } from "@/lib/mock-data"
+interface CategoryChartItem {
+  name: string
+  value: number
+}
+
+interface CategoryChartProps {
+  data: CategoryChartItem[]
+}
 
 const COLORS = [
   "hsl(var(--chart-1))",
@@ -12,11 +19,11 @@ const COLORS = [
   "hsl(var(--chart-5))",
 ]
 
-export function CategoryChart() {
+export function CategoryChart({ data }: CategoryChartProps) {
   return (
     <Card className="bg-card border-border">
       <CardHeader>
-        <CardTitle className="text-card-foreground">Sales by Category</CardTitle>
+        <CardTitle className="text-card-foreground">Doanh thu theo danh mục</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-8">
@@ -24,7 +31,7 @@ export function CategoryChart() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={categoryDistribution}
+                  data={data}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -32,7 +39,7 @@ export function CategoryChart() {
                   paddingAngle={4}
                   dataKey="value"
                 >
-                  {categoryDistribution.map((_, index) => (
+                  {data.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -43,13 +50,13 @@ export function CategoryChart() {
                     borderRadius: "8px",
                     color: "hsl(var(--card-foreground))",
                   }}
-                  formatter={(value: number) => [`${value}%`, "Share"]}
+                  formatter={(value: number) => [`${value}%`, "Tỷ trọng"]}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
           <div className="flex-1 space-y-3">
-            {categoryDistribution.map((category, index) => (
+            {data.map((category, index) => (
               <div key={category.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div

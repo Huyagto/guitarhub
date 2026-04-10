@@ -3,8 +3,11 @@
 export interface Product {
   id: string
   name: string
+  slug?: string
   sku: string
+  categoryId?: string
   category: string
+  brandId?: string
   brand: string
   price: number
   stock: number

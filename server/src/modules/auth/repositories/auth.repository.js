@@ -24,9 +24,25 @@ const updateGoogleId = async (id, googleId) => {
     return prisma.user.update({ where: { id }, data: { googleId } });
 };
 
+const updateDefaultShippingAddress = async (id, defaultShippingAddress) => {
+    return prisma.user.update({
+        where: { id },
+        data: { defaultShippingAddress },
+    });
+};
+
 const isEmailTaken = async (email) => {
     const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     return !!user;
 };
 
-module.exports = { findByEmail, findById, findByGoogleId, create, updatePassword, updateGoogleId, isEmailTaken };
+module.exports = {
+    findByEmail,
+    findById,
+    findByGoogleId,
+    create,
+    updatePassword,
+    updateGoogleId,
+    updateDefaultShippingAddress,
+    isEmailTaken,
+};

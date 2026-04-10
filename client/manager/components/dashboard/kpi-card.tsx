@@ -36,7 +36,7 @@ export function KpiCard({ title, value, change, icon: Icon, prefix = "" }: KpiCa
               >
                 {isPositive ? "+" : ""}{change}%
               </span>
-              <span className="text-sm text-muted-foreground">vs last month</span>
+              <span className="text-sm text-muted-foreground">so với tháng trước</span>
             </div>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">

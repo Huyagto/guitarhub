@@ -12,9 +12,6 @@ import {
   Wallet,
   Smartphone,
   Banknote,
-  MapPinned,
-  Search,
-  ExternalLink,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,13 +19,11 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav"
 import { useCart } from "@/lib/cart-context"
-import { formatPrice } from "@/lib/mock-data"
+import { formatPrice } from "@/lib/format"
+import { getAccessToken, getStoredUser } from "@/lib/auth"
 import type { PaymentMethod } from "@/lib/types"
-import {
-  mapOsmResultToShippingAddress,
-  searchOsmAddress,
-  type OsmSearchResult,
-} from "@/lib/osm"
+import { getDefaultShippingAddress } from "@/lib/shipping-address"
+import { createCheckout } from "@/lib/checkout-api"
 
 const paymentMethods = [
   {
@@ -61,11 +56,7 @@ export default function CheckoutPage() {
   const router = useRouter()
   const { items, subtotal, clearCart } = useCart()
   const [isLoading, setIsLoading] = useState(false)
-  const [isSearchingAddress, setIsSearchingAddress] = useState(false)
-  const [addressError, setAddressError] = useState("")
-  const [addressQuery, setAddressQuery] = useState("")
-  const [addressResults, setAddressResults] = useState<OsmSearchResult[]>([])
-  const [selectedOsmResult, setSelectedOsmResult] = useState<OsmSearchResult | null>(null)
+  const [submitError, setSubmitError] = useState("")
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod")
   const [shippingInfo, setShippingInfo] = useState({
     recipientName: "",
@@ -74,68 +65,97 @@ export default function CheckoutPage() {
     district: "",
     ward: "",
     detailAddress: "",
+    displayName: "",
+    lat: "",
+    lon: "",
   })
 
-  const shippingFee = subtotal >= 500 ? 0 : 25
+  const freeShippingThreshold = 5000000
+  const defaultShippingFee = 30000
+  const shippingFee = subtotal >= freeShippingThreshold ? 0 : defaultShippingFee
   const total = subtotal + shippingFee
+  const mapEmbedUrl =
+    shippingInfo.lat && shippingInfo.lon
+      ? `https://www.openstreetmap.org/export/embed.html?bbox=${Number(shippingInfo.lon) - 0.002}%2C${Number(shippingInfo.lat) - 0.002}%2C${Number(shippingInfo.lon) + 0.002}%2C${Number(shippingInfo.lat) + 0.002}&layer=mapnik&marker=${shippingInfo.lat}%2C${shippingInfo.lon}`
+      : null
 
   useEffect(() => {
-    const trimmedQuery = addressQuery.trim()
+    const storedUser = getStoredUser()
+    const storedAddress = getDefaultShippingAddress()
 
-    if (trimmedQuery.length < 3) {
-      setAddressResults([])
-      setIsSearchingAddress(false)
-      setAddressError("")
+    if (storedUser) {
+      setShippingInfo((prev) => ({
+        ...prev,
+        recipientName: storedUser.fullName || "",
+        phone: storedUser.phone || "",
+      }))
+    }
+
+    if (!storedAddress) {
+      router.replace("/profile?from=checkout")
       return
     }
 
-    const controller = new AbortController()
-    const timeoutId = window.setTimeout(async () => {
-      try {
-        setIsSearchingAddress(true)
-        setAddressError("")
-        const results = await searchOsmAddress(trimmedQuery, controller.signal)
-        setAddressResults(results)
-      } catch (error) {
-        if (controller.signal.aborted) return
-        setAddressResults([])
-        setAddressError(
-          error instanceof Error ? error.message : "Không thể tìm địa chỉ"
-        )
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsSearchingAddress(false)
-        }
-      }
-    }, 400)
-
-    return () => {
-      controller.abort()
-      window.clearTimeout(timeoutId)
-    }
-  }, [addressQuery])
-
-  const handleSelectOsmAddress = (result: OsmSearchResult) => {
-    const mappedAddress = mapOsmResultToShippingAddress(result)
-
-    setSelectedOsmResult(result)
-    setAddressQuery(result.display_name)
-    setAddressResults([])
-    setAddressError("")
     setShippingInfo((prev) => ({
       ...prev,
-      ...mappedAddress,
+      province: storedAddress.province,
+      district: storedAddress.district,
+      ward: storedAddress.ward,
+      detailAddress: storedAddress.detailAddress,
+      displayName: storedAddress.displayName,
+      lat: storedAddress.lat || "",
+      lon: storedAddress.lon || "",
     }))
-  }
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const storedAddress = getDefaultShippingAddress()
+    if (!storedAddress) {
+      router.replace("/profile?from=checkout")
+      return
+    }
+
     setIsLoading(true)
+    setSubmitError("")
 
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      if (!getAccessToken()) {
+        throw new Error("Vui lòng đăng nhập để thanh toán")
+      }
 
-    clearCart()
-    router.push("/checkout/success")
+      const checkout = await createCheckout({
+        paymentMethod,
+        shippingInfo: {
+          recipientName: shippingInfo.recipientName,
+          phone: shippingInfo.phone,
+          province: shippingInfo.province,
+          district: shippingInfo.district,
+          ward: shippingInfo.ward,
+          detailAddress: shippingInfo.detailAddress,
+          displayName: shippingInfo.displayName,
+          lat: shippingInfo.lat,
+          lon: shippingInfo.lon,
+        },
+      })
+
+      if (checkout.paymentUrl) {
+        window.location.href = checkout.paymentUrl
+        return
+      }
+
+      if (checkout.redirectUrl) {
+        await clearCart()
+        router.push(checkout.redirectUrl.replace(/^https?:\/\/[^/]+/, ""))
+      }
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Không thể khởi tạo thanh toán"
+      )
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   if (items.length === 0) {
@@ -190,177 +210,69 @@ export default function CheckoutPage() {
             <div className="space-y-8 lg:col-span-2">
               <div className="rounded-xl border border-border p-6">
                 <h2 className="text-lg font-semibold text-foreground">
-                  Địa chỉ giao hàng
+                  Thông tin nhận hàng
                 </h2>
-
-                <div className="mt-6 rounded-xl border border-accent/20 bg-accent/5 p-4">
-                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <MapPinned className="h-4 w-4 text-accent" />
-                    Tìm địa chỉ với OpenStreetMap
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Nhập tên đường, khu vực hoặc địa chỉ gần đúng. Chọn một gợi ý để tự điền thông tin giao hàng.
-                  </p>
-
-                  <div className="relative mt-4">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={addressQuery}
-                      onChange={(e) => {
-                        setAddressQuery(e.target.value)
-                        setSelectedOsmResult(null)
-                      }}
-                      className="pl-9"
-                      placeholder="Ví dụ: 123 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh"
-                    />
-                  </div>
-
-                  {isSearchingAddress ? (
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      Đang tìm địa chỉ từ OSM...
-                    </p>
-                  ) : null}
-
-                  {addressError ? (
-                    <p className="mt-3 text-sm text-destructive">{addressError}</p>
-                  ) : null}
-
-                  {addressResults.length > 0 ? (
-                    <div className="mt-3 overflow-hidden rounded-lg border border-border bg-background">
-                      {addressResults.map((result) => (
-                        <button
-                          key={result.place_id}
-                          type="button"
-                          className="flex w-full items-start justify-between gap-3 border-b border-border px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-muted"
-                          onClick={() => handleSelectOsmAddress(result)}
-                        >
-                          <span className="text-sm text-foreground">
-                            {result.display_name}
-                          </span>
-                          <span className="shrink-0 text-xs text-accent">
-                            Chọn
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  {selectedOsmResult ? (
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                      <span className="rounded-full bg-background px-3 py-1 text-muted-foreground">
-                        Đã chọn từ OpenStreetMap
-                      </span>
-                      <a
-                        href={`https://www.openstreetmap.org/?mlat=${selectedOsmResult.lat}&mlon=${selectedOsmResult.lon}#map=18/${selectedOsmResult.lat}/${selectedOsmResult.lon}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 font-medium text-accent hover:text-accent/90"
-                      >
-                        Xem trên bản đồ
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    </div>
-                  ) : null}
-                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Điền người nhận và số điện thoại tại đây. Địa chỉ được lấy từ hồ sơ của bạn.
+                </p>
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
                     <Label htmlFor="recipientName">Người nhận</Label>
                     <Input
                       id="recipientName"
-                      required
                       value={shippingInfo.recipientName}
                       onChange={(e) =>
-                        setShippingInfo({
-                          ...shippingInfo,
+                        setShippingInfo((prev) => ({
+                          ...prev,
                           recipientName: e.target.value,
-                        })
+                        }))
                       }
                       className="mt-2"
-                      placeholder="Họ và tên"
+                      placeholder="Họ và tên người nhận"
                     />
                   </div>
 
                   <div className="sm:col-span-2">
-                    <Label htmlFor="phone">Số điện thoại</Label>
+                    <Label htmlFor="shippingPhone">Số điện thoại</Label>
                     <Input
-                      id="phone"
+                      id="shippingPhone"
                       type="tel"
-                      required
                       value={shippingInfo.phone}
                       onChange={(e) =>
-                        setShippingInfo({ ...shippingInfo, phone: e.target.value })
+                        setShippingInfo((prev) => ({
+                          ...prev,
+                          phone: e.target.value,
+                        }))
                       }
                       className="mt-2"
-                      placeholder="0901 234 567"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="province">Tỉnh / Thành phố</Label>
-                    <Input
-                      id="province"
-                      required
-                      value={shippingInfo.province}
-                      onChange={(e) =>
-                        setShippingInfo({
-                          ...shippingInfo,
-                          province: e.target.value,
-                        })
-                      }
-                      className="mt-2"
-                      placeholder="TP. Hồ Chí Minh"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="district">Quận / Huyện</Label>
-                    <Input
-                      id="district"
-                      required
-                      value={shippingInfo.district}
-                      onChange={(e) =>
-                        setShippingInfo({
-                          ...shippingInfo,
-                          district: e.target.value,
-                        })
-                      }
-                      className="mt-2"
-                      placeholder="Quận 1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="ward">Phường / Xã</Label>
-                    <Input
-                      id="ward"
-                      required
-                      value={shippingInfo.ward}
-                      onChange={(e) =>
-                        setShippingInfo({ ...shippingInfo, ward: e.target.value })
-                      }
-                      className="mt-2"
-                      placeholder="Phường Bến Nghé"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="detailAddress">Địa chỉ chi tiết</Label>
-                    <Input
-                      id="detailAddress"
-                      required
-                      value={shippingInfo.detailAddress}
-                      onChange={(e) =>
-                        setShippingInfo({
-                          ...shippingInfo,
-                          detailAddress: e.target.value,
-                        })
-                      }
-                      className="mt-2"
-                      placeholder="123 Đường Âm Nhạc, tầng 4"
+                      placeholder="Số điện thoại liên hệ"
                     />
                   </div>
                 </div>
+
+                <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4">
+                  <p className="font-medium text-foreground">Địa chỉ từ hồ sơ</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {shippingInfo.displayName || shippingInfo.detailAddress}
+                  </p>
+
+                  <Button asChild variant="outline" className="mt-4">
+                    <Link href="/profile?from=checkout">Đổi địa chỉ trong hồ sơ</Link>
+                  </Button>
+                </div>
+
+                {mapEmbedUrl ? (
+                  <div className="mt-4 overflow-hidden rounded-xl border border-border">
+                    <iframe
+                      title="Bản đồ địa chỉ giao hàng"
+                      src={mapEmbedUrl}
+                      className="h-72 w-full border-0"
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  </div>
+                ) : null}
               </div>
 
               <div className="rounded-xl border border-border p-6">
@@ -462,6 +374,10 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                 </div>
+
+                {submitError ? (
+                  <p className="mt-4 text-sm text-destructive">{submitError}</p>
+                ) : null}
 
                 <Button
                   type="submit"

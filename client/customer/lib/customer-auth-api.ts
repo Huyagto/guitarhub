@@ -1,5 +1,6 @@
 import { apiRequest } from "@/lib/api"
 import type { AuthUser } from "@/lib/auth"
+import type { StoredShippingAddress } from "@/lib/shipping-address"
 
 interface LoginResponse {
   user: AuthUser
@@ -58,6 +59,19 @@ export async function getCustomerProfile(accessToken: string) {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
+  })
+}
+
+export async function updateCustomerDefaultShippingAddress(
+  accessToken: string,
+  payload: StoredShippingAddress
+) {
+  return apiRequest<AuthUser>("/api/auth/profile/address", {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
   })
 }
 

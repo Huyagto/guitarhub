@@ -12,6 +12,7 @@ const {
     resetCustomerPasswordValidator,
     changeCustomerPasswordValidator,
     refreshCustomerTokenValidator,
+    updateCustomerDefaultShippingAddressValidator,
 } = require('../validators');
 
 const router = express.Router();
@@ -26,6 +27,13 @@ router.get('/google', customerAuthController.googleAuthUrl);
 router.get('/google/callback', customerAuthController.googleCallback);
 router.post('/logout', authenticate, authorize(roles.CUSTOMER), customerAuthController.logout);
 router.get('/profile', authenticate, authorize(roles.CUSTOMER), customerAuthController.getProfile);
+router.patch(
+    '/profile/address',
+    authenticate,
+    authorize(roles.CUSTOMER),
+    updateCustomerDefaultShippingAddressValidator,
+    customerAuthController.updateDefaultShippingAddress,
+);
 router.post('/change-password', authenticate, authorize(roles.CUSTOMER), changeCustomerPasswordValidator, customerAuthController.changePassword);
 
 module.exports = router;

@@ -40,7 +40,7 @@ export function DataTable<T extends { id: string }>({
   data,
   columns,
   searchKey,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = "Tìm kiếm...",
   pageSize = 10,
   actions,
 }: DataTableProps<T>) {
@@ -79,7 +79,7 @@ export function DataTable<T extends { id: string }>({
           </div>
         )}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Show</span>
+          <span className="text-sm text-muted-foreground">Hiển thị</span>
           <Select
             value={String(itemsPerPage)}
             onValueChange={(value) => {
@@ -97,7 +97,7 @@ export function DataTable<T extends { id: string }>({
               <SelectItem value="50">50</SelectItem>
             </SelectContent>
           </Select>
-          <span className="text-sm text-muted-foreground">entries</span>
+          <span className="text-sm text-muted-foreground">mục</span>
         </div>
       </div>
 
@@ -114,7 +114,7 @@ export function DataTable<T extends { id: string }>({
                   {column.header}
                 </TableHead>
               ))}
-              {actions && <TableHead className="w-24">Actions</TableHead>}
+              {actions && <TableHead className="w-24">Thao tác</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -124,7 +124,7 @@ export function DataTable<T extends { id: string }>({
                   colSpan={columns.length + (actions ? 1 : 0)}
                   className="h-24 text-center text-muted-foreground"
                 >
-                  No results found.
+                  Không tìm thấy kết quả.
                 </TableCell>
               </TableRow>
             ) : (
@@ -148,8 +148,8 @@ export function DataTable<T extends { id: string }>({
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredData.length)} of{" "}
-          {filteredData.length} entries
+          Hiển thị {filteredData.length === 0 ? 0 : startIndex + 1} đến {Math.min(startIndex + itemsPerPage, filteredData.length)} trong tổng số{" "}
+          {filteredData.length} mục
         </p>
         <div className="flex items-center gap-2">
           <Button

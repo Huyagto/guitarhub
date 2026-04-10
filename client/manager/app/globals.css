@@ -83,6 +83,33 @@
   --success-foreground: oklch(0.13 0.005 285);
 }
 
+.mode-staff {
+  --primary: oklch(0.78 0.16 72);
+  --ring: oklch(0.78 0.16 72);
+  --sidebar-primary: oklch(0.78 0.16 72);
+  --chart-1: oklch(0.78 0.16 72);
+  --chart-2: oklch(0.72 0.18 38);
+  --chart-3: oklch(0.68 0.12 145);
+}
+
+.mode-customer {
+  --primary: oklch(0.73 0.16 225);
+  --ring: oklch(0.73 0.16 225);
+  --sidebar-primary: oklch(0.73 0.16 225);
+  --chart-1: oklch(0.73 0.16 225);
+  --chart-2: oklch(0.69 0.13 180);
+  --chart-3: oklch(0.78 0.13 145);
+}
+
+.mode-reports {
+  --primary: oklch(0.69 0.18 305);
+  --ring: oklch(0.69 0.18 305);
+  --sidebar-primary: oklch(0.69 0.18 305);
+  --chart-1: oklch(0.69 0.18 305);
+  --chart-2: oklch(0.64 0.18 260);
+  --chart-3: oklch(0.76 0.14 70);
+}
+
 @theme inline {
   --font-sans: 'Geist', 'Geist Fallback';
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';

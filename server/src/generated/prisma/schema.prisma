@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     Int      @id @default(autoincrement())
+  email                  String   @unique
+  password               String?
+  fullName               String
+  googleId               String?  @unique
+  defaultShippingAddress Json?
+  role                   Role     @default(CUSTOMER)
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  cart Cart?
+
+  @@map("users")
+}
+
+model Category {
+  id          Int            @id @default(autoincrement())
+  name        String         @unique
+  slug        String         @unique
+  description String?
+  image       String?
+  status      CategoryStatus @default(ACTIVE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Brand {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  slug        String      @unique
+  description String?
+  logo        String?
+  status      BrandStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  products Product[]
+
+  @@map("brands")
+}
+
+model Product {
+  id               Int           @id @default(autoincrement())
+  name             String
+  slug             String        @unique
+  sku              String        @unique
+  categoryId       Int
+  brandId          Int
+  price            Decimal       @db.Decimal(10, 2)
+  stock            Int           @default(0)
+  image            String?
+  shortDescription String?
+  description      String?
+  status           ProductStatus @default(DRAFT)
+  rating           Decimal       @default(0) @db.Decimal(3, 2)
+  reviewCount      Int           @default(0)
+  isBestSeller     Boolean       @default(false)
+  isNewArrival     Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  category  Category   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  brand     Brand      @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  cartItems CartItem[]
+
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([status])
+  @@map("products")
+}
+
+model Cart {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    Int
+  productId Int
+  quantity  Int
+  unitPrice Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([cartId, productId])
+  @@index([productId])
+  @@map("cart_items")
+}
+
+enum Role {
+  CUSTOMER
+  STAFF
+  MANAGER
+}
+
+enum CategoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BrandStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProductStatus {
+  ACTIVE
+  DRAFT
+  ARCHIVED
+}

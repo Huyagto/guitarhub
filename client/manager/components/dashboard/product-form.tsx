@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import Image from "next/image"
+import { useEffect, useState } from "react"
+import { Loader2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -20,118 +21,173 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { categories, brands, type Product } from "@/lib/mock-data"
+import type { Brand, Category, Product } from "@/lib/manager-types"
+import { uploadManagerProductImage } from "@/lib/manager-data-api"
 
 interface ProductFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   product?: Product | null
-  onSubmit: (data: Partial<Product>) => void
+  categories: Category[]
+  brands: Brand[]
+  onSubmit: (data: Record<string, unknown>) => void
 }
 
-export function ProductForm({ open, onOpenChange, product, onSubmit }: ProductFormProps) {
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
+export function ProductForm({ open, onOpenChange, product, categories, brands, onSubmit }: ProductFormProps) {
   const [formData, setFormData] = useState({
     name: product?.name || "",
+    slug: product?.slug || "",
     sku: product?.sku || "",
-    category: product?.category || "",
-    brand: product?.brand || "",
+    categoryId: product?.categoryId || "",
+    brandId: product?.brandId || "",
     price: product?.price?.toString() || "",
     stock: product?.stock?.toString() || "",
+    image: product?.image || "",
     status: product?.status || "active",
   })
+  const [isUploading, setIsUploading] = useState(false)
+
+  useEffect(() => {
+    setFormData({
+      name: product?.name || "",
+      slug: product?.slug || "",
+      sku: product?.sku || "",
+      categoryId: product?.categoryId || "",
+      brandId: product?.brandId || "",
+      price: product?.price?.toString() || "",
+      stock: product?.stock?.toString() || "",
+      image: product?.image || "",
+      status: product?.status || "active",
+    })
+  }, [product, open])
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async () => {
+      try {
+        setIsUploading(true)
+        const upload = await uploadManagerProductImage(String(reader.result))
+        setFormData((prev) => ({
+          ...prev,
+          image: upload.metadata.url,
+        }))
+      } finally {
+        setIsUploading(false)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
     onSubmit({
-      ...formData,
-      price: parseFloat(formData.price),
-      stock: parseInt(formData.stock),
-    } as Partial<Product>)
+      name: formData.name,
+      slug: formData.slug || slugify(formData.name),
+      sku: formData.sku,
+      categoryId: Number(formData.categoryId),
+      brandId: Number(formData.brandId),
+      price: Number(formData.price),
+      stock: Number(formData.stock),
+      image: formData.image,
+      status: formData.status.toUpperCase(),
+    })
+
     onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[640px]">
         <DialogHeader>
-          <DialogTitle>{product ? "Edit Product" : "Add New Product"}</DialogTitle>
+          <DialogTitle>{product ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}</DialogTitle>
           <DialogDescription>
-            {product
-              ? "Update the product details below."
-              : "Fill in the details to add a new product."}
+            {product ? "Cập nhật thông tin sản phẩm bên dưới." : "Điền thông tin để thêm sản phẩm mới."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Product Name</Label>
+              <Label htmlFor="name">Tên sản phẩm</Label>
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter product name"
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    name: e.target.value,
+                    slug: product ? prev.slug : slugify(e.target.value),
+                  }))
+                }
+                placeholder="Nhập tên sản phẩm"
                 required
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="slug">Slug</Label>
+                <Input
+                  id="slug"
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: slugify(e.target.value) })}
+                  placeholder="slug-san-pham"
+                  required
+                />
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="sku">SKU</Label>
                 <Input
                   id="sku"
                   value={formData.sku}
                   onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                  placeholder="Enter SKU"
+                  placeholder="Nhập SKU"
                   required
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) => setFormData({ ...formData, status: value as Product["status"] })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="category">Danh mục</Label>
                 <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                  value={String(formData.categoryId)}
+                  onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder="Chọn danh mục" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.name}>
-                        {cat.name}
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={String(category.id)}>
+                        {category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="brand">Brand</Label>
+                <Label htmlFor="brand">Thương hiệu</Label>
                 <Select
-                  value={formData.brand}
-                  onValueChange={(value) => setFormData({ ...formData, brand: value })}
+                  value={String(formData.brandId)}
+                  onValueChange={(value) => setFormData({ ...formData, brandId: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select brand" />
+                    <SelectValue placeholder="Chọn thương hiệu" />
                   </SelectTrigger>
                   <SelectContent>
                     {brands.map((brand) => (
-                      <SelectItem key={brand.id} value={brand.name}>
+                      <SelectItem key={brand.id} value={String(brand.id)}>
                         {brand.name}
                       </SelectItem>
                     ))}
@@ -141,20 +197,19 @@ export function ProductForm({ open, onOpenChange, product, onSubmit }: ProductFo
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="price">Price ($)</Label>
+                <Label htmlFor="price">Giá (VND)</Label>
                 <Input
                   id="price"
                   type="number"
-                  step="0.01"
                   min="0"
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  placeholder="0.00"
+                  placeholder="0"
                   required
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="stock">Stock</Label>
+                <Label htmlFor="stock">Tồn kho</Label>
                 <Input
                   id="stock"
                   type="number"
@@ -166,12 +221,50 @@ export function ProductForm({ open, onOpenChange, product, onSubmit }: ProductFo
                 />
               </div>
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="status">Trạng thái</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData({ ...formData, status: value as Product["status"] })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Đang hoạt động</SelectItem>
+                  <SelectItem value="draft">Bản nháp</SelectItem>
+                  <SelectItem value="archived">Lưu trữ</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="image">Ảnh sản phẩm</Label>
+              <Input id="image" type="file" accept="image/*" onChange={handleFileChange} />
+              {isUploading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang tải ảnh lên Cloudinary...
+                </div>
+              ) : null}
+              {formData.image ? (
+                <div className="relative h-40 overflow-hidden rounded-lg border bg-muted">
+                  <Image src={formData.image} alt="Ảnh sản phẩm" fill className="object-cover" />
+                </div>
+              ) : (
+                <div className="flex h-32 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Chưa có ảnh sản phẩm
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Hủy
             </Button>
-            <Button type="submit">{product ? "Update" : "Add"} Product</Button>
+            <Button type="submit" disabled={isUploading}>
+              {product ? "Cập nhật" : "Thêm"} sản phẩm
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

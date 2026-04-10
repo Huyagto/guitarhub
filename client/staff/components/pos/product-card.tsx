@@ -28,12 +28,12 @@ export function ProductCard({ product, quantity, onAdd, onRemove }: ProductCardP
         />
         {isOutOfStock && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-            <Badge variant="destructive">Out of Stock</Badge>
+            <Badge variant="destructive">Hết hàng</Badge>
           </div>
         )}
         {isLowStock && !isOutOfStock && (
           <Badge className="absolute top-2 right-2 bg-amber-500 text-foreground">
-            Low Stock: {product.stock}
+            Sắp hết: {product.stock}
           </Badge>
         )}
       </div>
@@ -79,7 +79,7 @@ export function ProductCard({ product, quantity, onAdd, onRemove }: ProductCardP
               disabled={isOutOfStock}
             >
               <Plus className="mr-1 h-4 w-4" />
-              Add
+              Thêm
             </Button>
           )}
         </div>

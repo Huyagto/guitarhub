@@ -2,19 +2,48 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { Trash2, ShoppingBag, ArrowRight, Minus, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav"
 import { EmptyState } from "@/components/ui/empty-state"
 import { useCart } from "@/lib/cart-context"
-import { formatPrice } from "@/lib/mock-data"
+import { formatPrice } from "@/lib/format"
+import { getDefaultShippingAddress } from "@/lib/shipping-address"
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, subtotal } = useCart()
-  
-  const shippingFee = subtotal >= 500 ? 0 : 25
+  const router = useRouter()
+  const { items, removeItem, updateQuantity, subtotal, isLoading } = useCart()
+
+  const freeShippingThreshold = 5000000
+  const defaultShippingFee = 30000
+  const shippingFee = subtotal >= freeShippingThreshold ? 0 : defaultShippingFee
   const total = subtotal + shippingFee
+
+  const handleCheckout = () => {
+    const defaultAddress = getDefaultShippingAddress()
+
+    if (!defaultAddress) {
+      router.push("/profile?from=checkout")
+      return
+    }
+
+    router.push("/checkout")
+  }
+
+  if (isLoading) {
+    return (
+      <div className="py-8">
+        <div className="mx-auto max-w-7xl px-4 lg:px-8">
+          <BreadcrumbNav items={[{ label: "Giỏ hàng" }]} />
+          <div className="mt-16 text-center text-muted-foreground">
+            Đang tải giỏ hàng...
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (items.length === 0) {
     return (
@@ -50,16 +79,14 @@ export default function CartPage() {
           Giỏ hàng
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Có {items.length} {items.length === 1 ? "sản phẩm" : "sản phẩm"} trong giỏ hàng
+          Có {items.length} sản phẩm trong giỏ hàng
         </p>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-3">
-          {/* Cart items */}
           <div className="lg:col-span-2">
             <div className="divide-y divide-border rounded-xl border border-border">
               {items.map((item) => (
                 <div key={item.id} className="flex gap-4 p-4 sm:p-6">
-                  {/* Product image */}
                   <Link
                     href={`/product/${item.product.slug}`}
                     className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-muted sm:h-32 sm:w-32"
@@ -73,13 +100,12 @@ export default function CartPage() {
                     />
                   </Link>
 
-                  {/* Product details */}
                   <div className="flex flex-1 flex-col">
                     <div className="flex justify-between">
                       <div>
                         <Link
                           href={`/product/${item.product.slug}`}
-                          className="font-medium text-foreground hover:text-accent transition-colors line-clamp-2"
+                          className="line-clamp-2 font-medium text-foreground transition-colors hover:text-accent"
                         >
                           {item.product.name}
                         </Link>
@@ -99,15 +125,12 @@ export default function CartPage() {
                     </div>
 
                     <div className="mt-auto flex items-end justify-between pt-4">
-                      {/* Quantity controls */}
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() =>
-                            updateQuantity(item.id, item.quantity - 1)
-                          }
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
                           disabled={item.quantity <= 1}
                         >
                           <Minus className="h-3 w-3" />
@@ -119,16 +142,13 @@ export default function CartPage() {
                           variant="outline"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() =>
-                            updateQuantity(item.id, item.quantity + 1)
-                          }
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
                           disabled={item.quantity >= item.product.stock}
                         >
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
 
-                      {/* Price */}
                       <div className="text-right">
                         <p className="font-semibold text-foreground">
                           {formatPrice(item.product.price * item.quantity)}
@@ -152,7 +172,6 @@ export default function CartPage() {
             </div>
           </div>
 
-          {/* Order summary */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 rounded-xl border border-border bg-card p-6">
               <h2 className="text-lg font-semibold text-foreground">
@@ -178,9 +197,9 @@ export default function CartPage() {
                     )}
                   </span>
                 </div>
-                {subtotal < 500 && (
+                {subtotal < freeShippingThreshold && (
                   <p className="text-xs text-muted-foreground">
-                    Mua thêm {formatPrice(500 - subtotal)} để được miễn phí giao hàng
+                    Mua thêm {formatPrice(freeShippingThreshold - subtotal)} để được miễn phí giao hàng
                   </p>
                 )}
               </div>
@@ -196,7 +215,6 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {/* Promo code */}
               <div className="mt-6">
                 <div className="flex gap-2">
                   <Input placeholder="Nhập mã giảm giá" className="flex-1" />
@@ -204,15 +222,13 @@ export default function CartPage() {
                 </div>
               </div>
 
-              <Button asChild className="mt-6 w-full" size="lg">
-                <Link href="/checkout">
-                  Tiến hành thanh toán
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
+              <Button className="mt-6 w-full" size="lg" onClick={handleCheckout}>
+                Tiến hành thanh toán
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
 
               <p className="mt-4 text-center text-xs text-muted-foreground">
-                Thanh toán an toàn với mã hóa SSL
+                Nếu chưa chọn địa chỉ giao hàng, hệ thống sẽ đưa bạn tới hồ sơ để chọn trước khi thanh toán.
               </p>
             </div>
           </div>

@@ -20,9 +20,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { categories, brands } from "@/lib/mock-data"
+import { formatPrice } from "@/lib/format"
+import type { BrandInfo, CategoryInfo } from "@/lib/types"
 
-interface FiltersState {
+export interface FiltersState {
   categories: string[]
   brands: string[]
   priceRange: [number, number]
@@ -31,17 +32,23 @@ interface FiltersState {
 
 interface ShopFiltersProps {
   filters: FiltersState
+  categories: CategoryInfo[]
+  brands: BrandInfo[]
   onFiltersChange: (filters: FiltersState) => void
 }
 
-function FiltersContent({ filters, onFiltersChange }: ShopFiltersProps) {
+function FiltersContent({
+  filters,
+  categories,
+  brands,
+  onFiltersChange,
+}: ShopFiltersProps) {
   return (
     <div className="space-y-6">
       <Accordion type="multiple" defaultValue={["category", "brand", "price"]} className="w-full">
-        {/* Category Filter */}
         <AccordionItem value="category">
           <AccordionTrigger className="text-sm font-semibold">
-            Category
+            Danh mục
           </AccordionTrigger>
           <AccordionContent>
             <div className="space-y-3 pt-2">
@@ -51,13 +58,13 @@ function FiltersContent({ filters, onFiltersChange }: ShopFiltersProps) {
                     id={category.id}
                     checked={filters.categories.includes(category.id)}
                     onCheckedChange={(checked) => {
-                      const newCategories = checked
+                      const nextCategories = checked
                         ? [...filters.categories, category.id]
-                        : filters.categories.filter((c) => c !== category.id)
-                      onFiltersChange({ ...filters, categories: newCategories })
+                        : filters.categories.filter((item) => item !== category.id)
+                      onFiltersChange({ ...filters, categories: nextCategories })
                     }}
                   />
-                  <Label htmlFor={category.id} className="text-sm font-normal cursor-pointer">
+                  <Label htmlFor={category.id} className="cursor-pointer text-sm font-normal">
                     {category.name} ({category.productCount})
                   </Label>
                 </div>
@@ -66,10 +73,9 @@ function FiltersContent({ filters, onFiltersChange }: ShopFiltersProps) {
           </AccordionContent>
         </AccordionItem>
 
-        {/* Brand Filter */}
         <AccordionItem value="brand">
           <AccordionTrigger className="text-sm font-semibold">
-            Brand
+            Thương hiệu
           </AccordionTrigger>
           <AccordionContent>
             <div className="space-y-3 pt-2">
@@ -79,13 +85,13 @@ function FiltersContent({ filters, onFiltersChange }: ShopFiltersProps) {
                     id={`brand-${brand.id}`}
                     checked={filters.brands.includes(brand.name)}
                     onCheckedChange={(checked) => {
-                      const newBrands = checked
+                      const nextBrands = checked
                         ? [...filters.brands, brand.name]
-                        : filters.brands.filter((b) => b !== brand.name)
-                      onFiltersChange({ ...filters, brands: newBrands })
+                        : filters.brands.filter((item) => item !== brand.name)
+                      onFiltersChange({ ...filters, brands: nextBrands })
                     }}
                   />
-                  <Label htmlFor={`brand-${brand.id}`} className="text-sm font-normal cursor-pointer">
+                  <Label htmlFor={`brand-${brand.id}`} className="cursor-pointer text-sm font-normal">
                     {brand.name}
                   </Label>
                 </div>
@@ -94,10 +100,9 @@ function FiltersContent({ filters, onFiltersChange }: ShopFiltersProps) {
           </AccordionContent>
         </AccordionItem>
 
-        {/* Price Filter */}
         <AccordionItem value="price">
           <AccordionTrigger className="text-sm font-semibold">
-            Price Range
+            Khoảng giá
           </AccordionTrigger>
           <AccordionContent>
             <div className="space-y-4 pt-2">
@@ -109,40 +114,42 @@ function FiltersContent({ filters, onFiltersChange }: ShopFiltersProps) {
                     priceRange: [value[0], value[1]] as [number, number],
                   })
                 }
-                max={5000}
-                step={50}
+                max={100000000}
+                step={100000}
                 className="w-full"
               />
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <Label htmlFor="min-price" className="text-xs text-muted-foreground">
-                    Min
+                    Từ
                   </Label>
                   <Input
                     id="min-price"
                     type="number"
+                    min={0}
                     value={filters.priceRange[0]}
                     onChange={(e) =>
                       onFiltersChange({
                         ...filters,
-                        priceRange: [Number(e.target.value), filters.priceRange[1]],
+                        priceRange: [Number(e.target.value || 0), filters.priceRange[1]],
                       })
                     }
                     className="mt-1 h-9"
                   />
                 </div>
-                <div className="flex-1">
+                <div>
                   <Label htmlFor="max-price" className="text-xs text-muted-foreground">
-                    Max
+                    Đến
                   </Label>
                   <Input
                     id="max-price"
                     type="number"
+                    min={0}
                     value={filters.priceRange[1]}
                     onChange={(e) =>
                       onFiltersChange({
                         ...filters,
-                        priceRange: [filters.priceRange[0], Number(e.target.value)],
+                        priceRange: [filters.priceRange[0], Number(e.target.value || 0)],
                       })
                     }
                     className="mt-1 h-9"
@@ -153,10 +160,9 @@ function FiltersContent({ filters, onFiltersChange }: ShopFiltersProps) {
           </AccordionContent>
         </AccordionItem>
 
-        {/* Availability Filter */}
         <AccordionItem value="availability">
           <AccordionTrigger className="text-sm font-semibold">
-            Availability
+            Tình trạng
           </AccordionTrigger>
           <AccordionContent>
             <div className="flex items-center space-x-2 pt-2">
@@ -167,8 +173,8 @@ function FiltersContent({ filters, onFiltersChange }: ShopFiltersProps) {
                   onFiltersChange({ ...filters, inStock: checked as boolean })
                 }
               />
-              <Label htmlFor="in-stock" className="text-sm font-normal cursor-pointer">
-                In stock only
+              <Label htmlFor="in-stock" className="cursor-pointer text-sm font-normal">
+                Chỉ hiển thị sản phẩm còn hàng
               </Label>
             </div>
           </AccordionContent>
@@ -182,42 +188,50 @@ function FiltersContent({ filters, onFiltersChange }: ShopFiltersProps) {
           onFiltersChange({
             categories: [],
             brands: [],
-            priceRange: [0, 5000],
+            priceRange: [0, 100000000],
             inStock: false,
           })
         }
       >
-        Clear all filters
+        Xóa toàn bộ bộ lọc
       </Button>
     </div>
   )
 }
 
-export function ShopFilters({ filters, onFiltersChange }: ShopFiltersProps) {
+export function ShopFilters({
+  filters,
+  categories,
+  brands,
+  onFiltersChange,
+}: ShopFiltersProps) {
   const [open, setOpen] = useState(false)
   const activeFiltersCount =
     filters.categories.length +
     filters.brands.length +
     (filters.inStock ? 1 : 0) +
-    (filters.priceRange[0] > 0 || filters.priceRange[1] < 5000 ? 1 : 0)
+    (filters.priceRange[0] > 0 || filters.priceRange[1] < 100000000 ? 1 : 0)
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <div className="hidden lg:block w-64 flex-shrink-0">
+      <div className="hidden w-64 flex-shrink-0 lg:block">
         <div className="sticky top-24">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Filters</h2>
-          <FiltersContent filters={filters} onFiltersChange={onFiltersChange} />
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Bộ lọc</h2>
+          <FiltersContent
+            filters={filters}
+            categories={categories}
+            brands={brands}
+            onFiltersChange={onFiltersChange}
+          />
         </div>
       </div>
 
-      {/* Mobile filter sheet */}
       <div className="lg:hidden">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" className="gap-2">
               <SlidersHorizontal className="h-4 w-4" />
-              Filters
+              Bộ lọc
               {activeFiltersCount > 0 && (
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs text-accent-foreground">
                   {activeFiltersCount}
@@ -227,10 +241,15 @@ export function ShopFilters({ filters, onFiltersChange }: ShopFiltersProps) {
           </SheetTrigger>
           <SheetContent side="left" className="w-80">
             <SheetHeader>
-              <SheetTitle>Filters</SheetTitle>
+              <SheetTitle>Bộ lọc</SheetTitle>
             </SheetHeader>
             <div className="mt-6">
-              <FiltersContent filters={filters} onFiltersChange={onFiltersChange} />
+              <FiltersContent
+                filters={filters}
+                categories={categories}
+                brands={brands}
+                onFiltersChange={onFiltersChange}
+              />
             </div>
           </SheetContent>
         </Sheet>
@@ -241,6 +260,8 @@ export function ShopFilters({ filters, onFiltersChange }: ShopFiltersProps) {
 
 export function ActiveFilters({
   filters,
+  categories,
+  brands,
   onFiltersChange,
 }: ShopFiltersProps) {
   const hasActiveFilters =
@@ -248,67 +269,68 @@ export function ActiveFilters({
     filters.brands.length > 0 ||
     filters.inStock ||
     filters.priceRange[0] > 0 ||
-    filters.priceRange[1] < 5000
+    filters.priceRange[1] < 100000000
 
   if (!hasActiveFilters) return null
 
   return (
-    <div className="flex flex-wrap items-center gap-2 mb-6">
-      <span className="text-sm text-muted-foreground">Active filters:</span>
-      
-      {filters.categories.map((cat) => {
-        const category = categories.find((c) => c.id === cat)
+    <div className="mb-6 flex flex-wrap items-center gap-2">
+      <span className="text-sm text-muted-foreground">Bộ lọc đang áp dụng:</span>
+
+      {filters.categories.map((categoryId) => {
+        const category = categories.find((item) => item.id === categoryId)
         return (
           <Button
-            key={cat}
+            key={categoryId}
             variant="secondary"
             size="sm"
             className="h-7 gap-1 text-xs"
             onClick={() =>
               onFiltersChange({
                 ...filters,
-                categories: filters.categories.filter((c) => c !== cat),
+                categories: filters.categories.filter((item) => item !== categoryId),
               })
             }
           >
-            {category?.name}
+            {category?.name || categoryId}
             <X className="h-3 w-3" />
           </Button>
         )
       })}
-      
-      {filters.brands.map((brand) => (
+
+      {filters.brands.map((brandName) => {
+        const brand = brands.find((item) => item.name === brandName)
+        return (
+          <Button
+            key={brandName}
+            variant="secondary"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() =>
+              onFiltersChange({
+                ...filters,
+                brands: filters.brands.filter((item) => item !== brandName),
+              })
+            }
+          >
+            {brand?.name || brandName}
+            <X className="h-3 w-3" />
+          </Button>
+        )
+      })}
+
+      {(filters.priceRange[0] > 0 || filters.priceRange[1] < 100000000) && (
         <Button
-          key={brand}
           variant="secondary"
           size="sm"
           className="h-7 gap-1 text-xs"
-          onClick={() =>
-            onFiltersChange({
-              ...filters,
-              brands: filters.brands.filter((b) => b !== brand),
-            })
-          }
+          onClick={() => onFiltersChange({ ...filters, priceRange: [0, 100000000] })}
         >
-          {brand}
-          <X className="h-3 w-3" />
-        </Button>
-      ))}
-      
-      {(filters.priceRange[0] > 0 || filters.priceRange[1] < 5000) && (
-        <Button
-          variant="secondary"
-          size="sm"
-          className="h-7 gap-1 text-xs"
-          onClick={() =>
-            onFiltersChange({ ...filters, priceRange: [0, 5000] })
-          }
-        >
-          ${filters.priceRange[0]} - ${filters.priceRange[1]}
+          {formatPrice(filters.priceRange[0])} - {formatPrice(filters.priceRange[1])}
           <X className="h-3 w-3" />
         </Button>
       )}
-      
+
       {filters.inStock && (
         <Button
           variant="secondary"
@@ -316,11 +338,11 @@ export function ActiveFilters({
           className="h-7 gap-1 text-xs"
           onClick={() => onFiltersChange({ ...filters, inStock: false })}
         >
-          In stock
+          Còn hàng
           <X className="h-3 w-3" />
         </Button>
       )}
-      
+
       <Button
         variant="ghost"
         size="sm"
@@ -329,12 +351,12 @@ export function ActiveFilters({
           onFiltersChange({
             categories: [],
             brands: [],
-            priceRange: [0, 5000],
+            priceRange: [0, 100000000],
             inStock: false,
           })
         }
       >
-        Clear all
+        Xóa tất cả
       </Button>
     </div>
   )

@@ -20,7 +20,7 @@ interface ApiSuccessResponse<T> {
   metadata: T
 }
 
-const DEFAULT_API_URL = "http://localhost:3000"
+const DEFAULT_API_URL = "http://127.0.0.1:3000"
 
 function getApiBaseUrl() {
   return (process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL).replace(/\/$/, "")
@@ -37,10 +37,19 @@ export async function apiRequest<T>(
     headers.set("Content-Type", "application/json")
   }
 
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    ...init,
-    headers,
-  })
+  let response: Response
+
+  try {
+    response = await fetch(`${getApiBaseUrl()}${path}`, {
+      ...init,
+      headers,
+    })
+  } catch (error) {
+    throw new ApiError(
+      error instanceof Error ? error.message : "Không thể kết nối tới máy chủ",
+      0
+    )
+  }
 
   const isJson = response.headers.get("content-type")?.includes("application/json")
   const payload = isJson ? await response.json() : undefined
@@ -58,7 +67,12 @@ export async function apiRequest<T>(
 
 export function getErrorMessage(error: unknown, fallback = "Something went wrong") {
   if (error instanceof ApiError) {
-    const validationMessage = error.payload?.errors?.[0]?.msg || error.payload?.errors?.[0]?.message
+    if (error.status === 0) {
+      return "Không thể kết nối tới backend. Hãy kiểm tra server API đang chạy."
+    }
+
+    const validationMessage =
+      error.payload?.errors?.[0]?.msg || error.payload?.errors?.[0]?.message
     return validationMessage || error.message
   }
 

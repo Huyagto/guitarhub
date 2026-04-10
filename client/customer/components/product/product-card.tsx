@@ -6,7 +6,7 @@ import { Heart, ShoppingCart, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { formatPrice } from "@/lib/mock-data"
+import { formatPrice } from "@/lib/format"
 import type { Product } from "@/lib/types"
 import { useCart } from "@/lib/cart-context"
 

@@ -5,31 +5,45 @@ import { PromoBanner } from "@/components/home/promo-banner"
 import { BrandHighlights } from "@/components/home/brand-highlights"
 import { TestimonialsSection } from "@/components/home/testimonials-section"
 import { NewsletterSection } from "@/components/home/newsletter-section"
-import { getBestSellers, getNewArrivals } from "@/lib/mock-data"
+import {
+  getBestSellerProducts,
+  getCatalogCategories,
+  getNewArrivalProducts,
+} from "@/lib/catalog-api"
 
-export default function HomePage() {
-  const bestSellers = getBestSellers().slice(0, 4)
-  const newArrivals = getNewArrivals().slice(0, 4)
+export default async function HomePage() {
+  const [bestSellersResult, newArrivalsResult, categoriesResult] = await Promise.allSettled([
+    getBestSellerProducts(),
+    getNewArrivalProducts(),
+    getCatalogCategories(),
+  ])
+
+  const bestSellers =
+    bestSellersResult.status === "fulfilled" ? bestSellersResult.value : []
+  const newArrivals =
+    newArrivalsResult.status === "fulfilled" ? newArrivalsResult.value : []
+  const categories =
+    categoriesResult.status === "fulfilled" ? categoriesResult.value : []
 
   return (
     <>
       <HeroSection />
       <BrandHighlights />
-      <CategoriesSection />
+      <CategoriesSection categories={categories} />
       <ProductsSection
-        title="Best Sellers"
-        description="Our most popular guitars loved by musicians worldwide."
-        products={bestSellers}
+        title="Sản phẩm bán chạy"
+        description="Những mẫu đàn được khách hàng yêu thích và lựa chọn nhiều nhất."
+        products={bestSellers.slice(0, 4)}
         viewAllHref="/shop?sort=best-selling"
-        viewAllLabel="View all best sellers"
+        viewAllLabel="Xem tất cả"
       />
       <PromoBanner />
       <ProductsSection
-        title="New Arrivals"
-        description="The latest additions to our collection."
-        products={newArrivals}
+        title="Sản phẩm mới"
+        description="Các mẫu đàn và phụ kiện vừa cập bến tại GuitarHub."
+        products={newArrivals.slice(0, 4)}
         viewAllHref="/shop?sort=latest"
-        viewAllLabel="View all new arrivals"
+        viewAllLabel="Xem tất cả"
       />
       <TestimonialsSection />
       <NewsletterSection />

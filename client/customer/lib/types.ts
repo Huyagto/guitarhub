@@ -6,6 +6,7 @@ export interface Product {
   price: number
   oldPrice?: number
   category: Category
+  categoryName?: string
   brand: string
   rating: number
   reviewCount: number
@@ -20,12 +21,7 @@ export interface Product {
   createdAt: string
 }
 
-export type Category = 
-  | 'acoustic-guitar'
-  | 'electric-guitar'
-  | 'bass-guitar'
-  | 'classical-guitar'
-  | 'accessories'
+export type Category = string
 
 export interface CategoryInfo {
   id: Category
@@ -33,6 +29,15 @@ export interface CategoryInfo {
   description: string
   image: string
   productCount: number
+}
+
+export interface BrandInfo {
+  id: string
+  name: string
+  slug: string
+  logo?: string | null
+  description?: string | null
+  productCount?: number
 }
 
 // User Types
@@ -62,6 +67,7 @@ export interface CartItem {
   id: string
   product: Product
   quantity: number
+  unitPrice?: number
 }
 
 // Order Types

@@ -6,7 +6,7 @@ import { Star, Heart, Share2, Check, Truck, ShieldCheck, RotateCcw } from "lucid
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { QuantitySelector } from "@/components/ui/quantity-selector"
-import { formatPrice } from "@/lib/mock-data"
+import { formatPrice } from "@/lib/format"
 import type { Product } from "@/lib/types"
 import { useCart } from "@/lib/cart-context"
 

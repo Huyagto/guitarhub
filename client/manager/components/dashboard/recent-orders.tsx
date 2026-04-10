@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { orders } from "@/lib/mock-data"
+import type { Order } from "@/lib/manager-types"
 import { cn } from "@/lib/utils"
 
 const statusStyles = {
@@ -13,17 +13,19 @@ const statusStyles = {
   cancelled: "bg-destructive/10 text-destructive border-destructive/20",
 }
 
-export function RecentOrders() {
-  const recentOrders = orders.slice(0, 5)
+interface RecentOrdersProps {
+  orders: Order[]
+}
 
+export function RecentOrders({ orders }: RecentOrdersProps) {
   return (
     <Card className="bg-card border-border">
       <CardHeader>
-        <CardTitle className="text-card-foreground">Recent Orders</CardTitle>
+        <CardTitle className="text-card-foreground">Đơn hàng gần đây</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {recentOrders.map((order) => (
+          {orders.map((order) => (
             <div
               key={order.id}
               className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4"
@@ -39,7 +41,15 @@ export function RecentOrders() {
                   variant="outline"
                   className={cn("capitalize", statusStyles[order.status])}
                 >
-                  {order.status}
+                  {order.status === "pending"
+                    ? "Chờ xử lý"
+                    : order.status === "processing"
+                    ? "Đang xử lý"
+                    : order.status === "shipped"
+                    ? "Đang giao"
+                    : order.status === "delivered"
+                    ? "Đã giao"
+                    : "Đã hủy"}
                 </Badge>
                 <p className="text-sm font-medium text-foreground">
                   ${order.total.toLocaleString()}

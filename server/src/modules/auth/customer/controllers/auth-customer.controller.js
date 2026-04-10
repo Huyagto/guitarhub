@@ -55,6 +55,17 @@ const getProfile = async (req, res, next) => {
     } catch (error) { next(error); }
 };
 
+const updateDefaultShippingAddress = async (req, res, next) => {
+    try {
+        validateRequest(req);
+        const user = await customerAuthService.updateCustomerDefaultShippingAddress(req.user.id, req.body);
+        return new OK({
+            message: 'Cập nhật địa chỉ giao hàng mặc định thành công',
+            metadata: customerAuthResponseDto.toCustomerProfileResponse(user),
+        }).send(res);
+    } catch (error) { next(error); }
+};
+
 const changePassword = async (req, res, next) => {
     try {
         validateRequest(req);
@@ -112,6 +123,7 @@ module.exports = {
     logout,
     refreshToken,
     getProfile,
+    updateDefaultShippingAddress,
     changePassword,
     forgotPassword,
     verifyOtp,

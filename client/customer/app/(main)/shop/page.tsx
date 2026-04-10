@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Search, LayoutGrid, List } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { LayoutGrid, List, Package, Search, SearchX } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,10 +14,10 @@ import {
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav"
 import { ProductCard } from "@/components/product/product-card"
 import { ProductCardSkeleton } from "@/components/product/product-card-skeleton"
-import { ShopFilters, ActiveFilters } from "@/components/shop/shop-filters"
+import { ActiveFilters, ShopFilters, type FiltersState } from "@/components/shop/shop-filters"
 import { EmptyState } from "@/components/ui/empty-state"
-import { products } from "@/lib/mock-data"
-import { SearchX, Package } from "lucide-react"
+import { getCatalogBrands, getCatalogCategories, getCatalogProducts } from "@/lib/catalog-api"
+import type { BrandInfo, CategoryInfo, Product } from "@/lib/types"
 
 type SortOption = "latest" | "price-asc" | "price-desc" | "best-selling"
 type ViewMode = "grid" | "list"
@@ -26,50 +26,74 @@ export default function ShopPage() {
   const [search, setSearch] = useState("")
   const [sortBy, setSortBy] = useState<SortOption>("latest")
   const [viewMode, setViewMode] = useState<ViewMode>("grid")
-  const [filters, setFilters] = useState({
-    categories: [] as string[],
-    brands: [] as string[],
-    priceRange: [0, 5000] as [number, number],
+  const [filters, setFilters] = useState<FiltersState>({
+    categories: [],
+    brands: [],
+    priceRange: [0, 100000000],
     inStock: false,
   })
+  const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<CategoryInfo[]>([])
+  const [brands, setBrands] = useState<BrandInfo[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 12
+
+  useEffect(() => {
+    async function loadCatalog() {
+      try {
+        const [productsData, categoriesData, brandsData] = await Promise.all([
+          getCatalogProducts(),
+          getCatalogCategories(),
+          getCatalogBrands(),
+        ])
+
+        setProducts(productsData)
+        setCategories(categoriesData)
+        setBrands(brandsData)
+      } catch {
+        setProducts([])
+        setCategories([])
+        setBrands([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void loadCatalog()
+  }, [])
 
   const filteredProducts = useMemo(() => {
     let result = [...products]
 
-    // Search filter
     if (search) {
-      const searchLower = search.toLowerCase()
+      const keyword = search.toLowerCase()
       result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchLower) ||
-          p.brand.toLowerCase().includes(searchLower) ||
-          p.description.toLowerCase().includes(searchLower)
+        (product) =>
+          product.name.toLowerCase().includes(keyword) ||
+          product.brand.toLowerCase().includes(keyword) ||
+          product.description.toLowerCase().includes(keyword) ||
+          product.shortDescription.toLowerCase().includes(keyword)
       )
     }
 
-    // Category filter
     if (filters.categories.length > 0) {
-      result = result.filter((p) => filters.categories.includes(p.category))
+      result = result.filter((product) => filters.categories.includes(product.category))
     }
 
-    // Brand filter
     if (filters.brands.length > 0) {
-      result = result.filter((p) => filters.brands.includes(p.brand))
+      result = result.filter((product) => filters.brands.includes(product.brand))
     }
 
-    // Price filter
     result = result.filter(
-      (p) => p.price >= filters.priceRange[0] && p.price <= filters.priceRange[1]
+      (product) =>
+        product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1]
     )
 
-    // Stock filter
     if (filters.inStock) {
-      result = result.filter((p) => p.stock > 0)
+      result = result.filter((product) => product.stock > 0)
     }
 
-    // Sort
     switch (sortBy) {
       case "price-asc":
         result.sort((a, b) => a.price - b.price)
@@ -78,18 +102,18 @@ export default function ShopPage() {
         result.sort((a, b) => b.price - a.price)
         break
       case "best-selling":
-        result.sort((a, b) => (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0))
+        result.sort((a, b) => Number(b.isBestSeller) - Number(a.isBestSeller))
         break
       case "latest":
       default:
         result.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )
+        break
     }
 
     return result
-  }, [search, filters, sortBy])
+  }, [filters, products, search, sortBy])
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage)
   const paginatedProducts = filteredProducts.slice(
@@ -107,17 +131,22 @@ export default function ShopPage() {
             Tất cả guitar
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Khám phá toàn bộ bộ sưu tập guitar và phụ kiện cao cấp của chúng tôi.
+            Khám phá toàn bộ bộ sưu tập guitar và phụ kiện đang có tại GuitarHub.
           </p>
         </div>
 
         <div className="mt-8 flex flex-col gap-8 lg:flex-row">
-          {/* Filters sidebar */}
-          <ShopFilters filters={filters} onFiltersChange={setFilters} />
+          <ShopFilters
+            filters={filters}
+            categories={categories}
+            brands={brands}
+            onFiltersChange={(nextFilters) => {
+              setFilters(nextFilters)
+              setCurrentPage(1)
+            }}
+          />
 
-          {/* Main content */}
           <div className="flex-1">
-            {/* Toolbar */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative flex-1 sm:max-w-xs">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -135,26 +164,23 @@ export default function ShopPage() {
 
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground hidden sm:inline">
+                  <span className="hidden text-sm text-muted-foreground sm:inline">
                     Sắp xếp:
                   </span>
-                  <Select
-                    value={sortBy}
-                    onValueChange={(value) => setSortBy(value as SortOption)}
-                  >
-                    <SelectTrigger className="w-40">
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+                    <SelectTrigger className="w-48">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="latest">Mới nhất</SelectItem>
-                      <SelectItem value="price-asc">Giá: thấp đến cao</SelectItem>
-                      <SelectItem value="price-desc">Giá: cao đến thấp</SelectItem>
+                      <SelectItem value="price-asc">Giá thấp đến cao</SelectItem>
+                      <SelectItem value="price-desc">Giá cao đến thấp</SelectItem>
                       <SelectItem value="best-selling">Bán chạy</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="hidden sm:flex items-center gap-1 border rounded-lg p-1">
+                <div className="hidden items-center gap-1 rounded-lg border p-1 sm:flex">
                   <Button
                     variant={viewMode === "grid" ? "secondary" : "ghost"}
                     size="icon"
@@ -177,18 +203,37 @@ export default function ShopPage() {
               </div>
             </div>
 
-            {/* Active filters */}
             <div className="mt-4">
-              <ActiveFilters filters={filters} onFiltersChange={setFilters} />
+              <ActiveFilters
+                filters={filters}
+                categories={categories}
+                brands={brands}
+                onFiltersChange={(nextFilters) => {
+                  setFilters(nextFilters)
+                  setCurrentPage(1)
+                }}
+              />
             </div>
 
-            {/* Results count */}
-            <p className="mt-4 text-sm text-muted-foreground">
-              Hiển thị {paginatedProducts.length} / {filteredProducts.length} sản phẩm
-            </p>
+            {!isLoading && (
+              <p className="mt-4 text-sm text-muted-foreground">
+                Hiển thị {paginatedProducts.length} / {filteredProducts.length} sản phẩm
+              </p>
+            )}
 
-            {/* Products grid */}
-            {paginatedProducts.length > 0 ? (
+            {isLoading ? (
+              <div
+                className={`mt-6 grid gap-6 ${
+                  viewMode === "grid"
+                    ? "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3"
+                    : "grid-cols-1"
+                }`}
+              >
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <ProductCardSkeleton key={index} />
+                ))}
+              </div>
+            ) : paginatedProducts.length > 0 ? (
               <>
                 <div
                   className={`mt-6 grid gap-6 ${
@@ -202,35 +247,32 @@ export default function ShopPage() {
                   ))}
                 </div>
 
-                {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="mt-8 flex items-center justify-center gap-2">
                     <Button
                       variant="outline"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                       disabled={currentPage === 1}
                     >
                       Trước
                     </Button>
                     <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                        (page) => (
-                          <Button
-                            key={page}
-                            variant={currentPage === page ? "default" : "outline"}
-                            size="icon"
-                            className="h-9 w-9"
-                            onClick={() => setCurrentPage(page)}
-                          >
-                            {page}
-                          </Button>
-                        )
-                      )}
+                      {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ))}
                     </div>
                     <Button
                       variant="outline"
                       onClick={() =>
-                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                        setCurrentPage((page) => Math.min(totalPages, page + 1))
                       }
                       disabled={currentPage === totalPages}
                     >
@@ -243,11 +285,11 @@ export default function ShopPage() {
               <div className="mt-12">
                 <EmptyState
                   icon={search ? SearchX : Package}
-                  title={search ? "Không tìm thấy kết quả" : "Không có sản phẩm"}
+                  title={search ? "Không tìm thấy kết quả" : "Chưa có sản phẩm phù hợp"}
                   description={
                     search
-                      ? `Không tìm thấy sản phẩm nào khớp với "${search}". Hãy thử thay đổi từ khóa hoặc bộ lọc.`
-                      : "Không có sản phẩm nào khớp với bộ lọc hiện tại. Hãy thử điều chỉnh tiêu chí."
+                      ? `Không tìm thấy sản phẩm nào khớp với "${search}". Hãy thử từ khóa khác hoặc điều chỉnh bộ lọc.`
+                      : "Không có sản phẩm nào phù hợp với bộ lọc hiện tại. Hãy thử thay đổi điều kiện tìm kiếm."
                   }
                   action={
                     <Button
@@ -256,7 +298,7 @@ export default function ShopPage() {
                         setFilters({
                           categories: [],
                           brands: [],
-                          priceRange: [0, 5000],
+                          priceRange: [0, 100000000],
                           inStock: false,
                         })
                       }}

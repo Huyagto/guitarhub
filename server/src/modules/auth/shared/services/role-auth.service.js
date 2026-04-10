@@ -67,6 +67,14 @@ const getUserProfileById = async (userId) => {
     return omitPassword(user);
 };
 
+const updateUserDefaultShippingAddress = async (userId, payload) => {
+    const user = await authRepository.findById(userId);
+    if (!user) throw new NotFoundError('Không tìm thấy người dùng');
+
+    const updatedUser = await authRepository.updateDefaultShippingAddress(userId, payload);
+    return omitPassword(updatedUser);
+};
+
 const changeUserPassword = async (userId, { currentPassword, newPassword }, options = {}) => {
     const { passwordlessMessage } = options;
     const user = await authRepository.findById(userId);
@@ -89,5 +97,6 @@ module.exports = {
     logoutByUserId,
     refreshUserSession,
     getUserProfileById,
+    updateUserDefaultShippingAddress,
     changeUserPassword,
 };

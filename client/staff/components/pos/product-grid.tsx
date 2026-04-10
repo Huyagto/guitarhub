@@ -6,16 +6,20 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ProductCard } from './product-card'
-import { type Product, type OrderItem, categories, products } from '@/lib/pos-data'
+import { type Product, type OrderItem } from '@/lib/pos-data'
 import { cn } from '@/lib/utils'
 
 interface ProductGridProps {
+  categories: Array<{ id: string; name: string }>
+  products: Product[]
   orderItems: OrderItem[]
   onAddProduct: (product: Product) => void
   onRemoveProduct: (productId: string) => void
 }
 
 export function ProductGrid({
+  categories,
+  products,
   orderItems,
   onAddProduct,
   onRemoveProduct,

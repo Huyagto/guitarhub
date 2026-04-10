@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Topbar } from "@/components/dashboard/topbar"
 import { DataTable } from "@/components/dashboard/data-table"
 import { Button } from "@/components/ui/button"
@@ -8,40 +8,15 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { vouchers as initialVouchers, type Voucher } from "@/lib/mock-data"
-import { Plus, MoreHorizontal, Pencil, Trash2, Ticket, Copy } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import type { Voucher } from "@/lib/manager-types"
 import { cn } from "@/lib/utils"
+import { Copy, Loader2, MoreHorizontal, Pencil, Plus, Ticket, Trash2 } from "lucide-react"
+import { createManagerVoucher, deleteManagerVoucher, getManagerVouchers, updateManagerVoucher } from "@/lib/manager-data-api"
+import { getErrorMessage } from "@/lib/api"
 
 const statusStyles = {
   active: "bg-success/10 text-success border-success/20",
@@ -50,13 +25,12 @@ const statusStyles = {
 }
 
 export default function VouchersPage() {
-  const [vouchers, setVouchers] = useState<Voucher[]>(initialVouchers)
+  const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [editingVoucher, setEditingVoucher] = useState<Voucher | null>(null)
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; voucher: Voucher | null }>({
-    open: false,
-    voucher: null,
-  })
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; voucher: Voucher | null }>({ open: false, voucher: null })
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     code: "",
     type: "percentage" as "percentage" | "fixed",
@@ -66,15 +40,23 @@ export default function VouchersPage() {
     expiresAt: "",
   })
 
+  useEffect(() => {
+    const loadVouchers = async () => {
+      try {
+        const response = await getManagerVouchers()
+        setVouchers(response.metadata)
+      } catch (loadError) {
+        setError(getErrorMessage(loadError, "Không thể tải mã giảm giá"))
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void loadVouchers()
+  }, [])
+
   const resetForm = () => {
-    setFormData({
-      code: "",
-      type: "percentage",
-      value: "",
-      minPurchase: "",
-      usageLimit: "",
-      expiresAt: "",
-    })
+    setFormData({ code: "", type: "percentage", value: "", minPurchase: "", usageLimit: "", expiresAt: "" })
     setEditingVoucher(null)
   }
 
@@ -95,56 +77,54 @@ export default function VouchersPage() {
     setFormOpen(true)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (editingVoucher) {
-      setVouchers(
-        vouchers.map((v) =>
-          v.id === editingVoucher.id
-            ? {
-                ...v,
-                code: formData.code,
-                type: formData.type,
-                value: parseInt(formData.value),
-                minPurchase: parseInt(formData.minPurchase),
-                usageLimit: parseInt(formData.usageLimit),
-                expiresAt: formData.expiresAt,
-              }
-            : v
-        )
-      )
-    } else {
-      const newVoucher: Voucher = {
-        id: String(vouchers.length + 1),
-        code: formData.code.toUpperCase(),
-        type: formData.type,
-        value: parseInt(formData.value),
-        minPurchase: parseInt(formData.minPurchase),
-        usageLimit: parseInt(formData.usageLimit),
-        usedCount: 0,
-        status: "active",
-        expiresAt: formData.expiresAt,
-      }
-      setVouchers([newVoucher, ...vouchers])
+    const payload = {
+      code: formData.code.toUpperCase(),
+      type: formData.type,
+      value: parseInt(formData.value, 10),
+      minPurchase: parseInt(formData.minPurchase, 10),
+      usageLimit: parseInt(formData.usageLimit, 10),
+      expiresAt: formData.expiresAt,
+      ...(editingVoucher ? {} : { usedCount: 0, status: "active" as const }),
     }
-    setFormOpen(false)
-    resetForm()
+
+    try {
+      if (editingVoucher) {
+        const response = await updateManagerVoucher(editingVoucher.id, payload)
+        setVouchers((prev) => prev.map((item) => (item.id === editingVoucher.id ? response.metadata : item)))
+      } else {
+        const response = await createManagerVoucher(payload)
+        setVouchers((prev) => [response.metadata, ...prev])
+      }
+      setFormOpen(false)
+      resetForm()
+      setError("")
+    } catch (submitError) {
+      setError(getErrorMessage(submitError, "Không thể lưu mã giảm giá"))
+    }
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteDialog.voucher) return
-    setVouchers(vouchers.filter((v) => v.id !== deleteDialog.voucher!.id))
-    setDeleteDialog({ open: false, voucher: null })
+    try {
+      await deleteManagerVoucher(deleteDialog.voucher.id)
+      setVouchers((prev) => prev.filter((item) => item.id !== deleteDialog.voucher?.id))
+      setDeleteDialog({ open: false, voucher: null })
+      setError("")
+    } catch (submitError) {
+      setError(getErrorMessage(submitError, "Không thể xóa mã giảm giá"))
+    }
   }
 
   const copyCode = (code: string) => {
-    navigator.clipboard.writeText(code)
+    void navigator.clipboard.writeText(code)
   }
 
   const columns = [
     {
       key: "code" as const,
-      header: "Code",
+      header: "Mã",
       render: (voucher: Voucher) => (
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
@@ -152,234 +132,123 @@ export default function VouchersPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="font-mono font-medium text-foreground">{voucher.code}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() => copyCode(voucher.code)}
-            >
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyCode(voucher.code)}>
               <Copy className="h-3 w-3" />
             </Button>
           </div>
         </div>
       ),
     },
-    {
-      key: "value" as const,
-      header: "Discount",
-      render: (voucher: Voucher) => (
-        <span className="font-medium text-primary">
-          {voucher.type === "percentage" ? `${voucher.value}%` : `$${voucher.value}`}
-        </span>
-      ),
-    },
-    {
-      key: "minPurchase" as const,
-      header: "Min Purchase",
-      render: (voucher: Voucher) => (
-        <span className="text-muted-foreground">${voucher.minPurchase}</span>
-      ),
-    },
-    {
-      key: "usage" as const,
-      header: "Usage",
-      render: (voucher: Voucher) => (
-        <span className="text-muted-foreground">
-          {voucher.usedCount} / {voucher.usageLimit === 0 ? "Unlimited" : voucher.usageLimit}
-        </span>
-      ),
-    },
+    { key: "value" as const, header: "Giảm giá", render: (voucher: Voucher) => <span className="font-medium text-primary">{voucher.type === "percentage" ? `${voucher.value}%` : `$${voucher.value}`}</span> },
+    { key: "minPurchase" as const, header: "Đơn tối thiểu", render: (voucher: Voucher) => <span className="text-muted-foreground">${voucher.minPurchase}</span> },
+    { key: "usage" as const, header: "Lượt dùng", render: (voucher: Voucher) => <span className="text-muted-foreground">{voucher.usedCount} / {voucher.usageLimit === 0 ? "Không giới hạn" : voucher.usageLimit}</span> },
     {
       key: "status" as const,
-      header: "Status",
-      render: (voucher: Voucher) => (
-        <Badge variant="outline" className={cn("capitalize", statusStyles[voucher.status])}>
-          {voucher.status}
-        </Badge>
-      ),
+      header: "Trạng thái",
+      render: (voucher: Voucher) => <Badge variant="outline" className={cn("capitalize", statusStyles[voucher.status])}>{voucher.status === "active" ? "Đang hoạt động" : voucher.status === "expired" ? "Hết hạn" : "Đã tắt"}</Badge>,
     },
-    {
-      key: "expiresAt" as const,
-      header: "Expires",
-      render: (voucher: Voucher) => (
-        <span className="text-muted-foreground">
-          {new Date(voucher.expiresAt).toLocaleDateString()}
-        </span>
-      ),
-    },
+    { key: "expiresAt" as const, header: "Hết hạn", render: (voucher: Voucher) => <span className="text-muted-foreground">{new Date(voucher.expiresAt).toLocaleDateString()}</span> },
   ]
 
   return (
     <div className="min-h-screen">
-      <Topbar title="Vouchers" description="Manage discount codes and promotions" />
-
+      <Topbar title="Mã giảm giá" description="Quản lý mã ưu đãi và chương trình khuyến mãi" />
       <main className="p-6">
+        {error ? <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">{error}</div> : null}
         <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-card-foreground">All Vouchers</h2>
-                <p className="text-sm text-muted-foreground">
-                  {vouchers.filter((v) => v.status === "active").length} active vouchers
-                </p>
+                <h2 className="text-lg font-semibold text-card-foreground">Tất cả mã giảm giá</h2>
+                <p className="text-sm text-muted-foreground">{vouchers.filter((voucher) => voucher.status === "active").length} mã đang hoạt động</p>
               </div>
               <Button onClick={() => handleOpenForm()}>
                 <Plus className="mr-2 h-4 w-4" />
-                Create Voucher
+                Tạo mã giảm giá
               </Button>
             </div>
 
-            <DataTable
-              data={vouchers}
-              columns={columns}
-              searchKey="code"
-              searchPlaceholder="Search vouchers..."
-              actions={(voucher) => (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleOpenForm(voucher)}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-destructive"
-                      onClick={() => setDeleteDialog({ open: true, voucher })}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            />
+            {isLoading ? <div className="flex min-h-[240px] items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div> : (
+              <DataTable
+                data={vouchers}
+                columns={columns}
+                searchKey="code"
+                searchPlaceholder="Tìm mã giảm giá..."
+                actions={(voucher) => (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleOpenForm(voucher)}><Pencil className="mr-2 h-4 w-4" />Chỉnh sửa</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={() => setDeleteDialog({ open: true, voucher })}><Trash2 className="mr-2 h-4 w-4" />Xóa</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              />
+            )}
           </CardContent>
         </Card>
       </main>
 
-      {/* Voucher Form Dialog */}
-      <Dialog open={formOpen} onOpenChange={(open) => { setFormOpen(open); if (!open) resetForm(); }}>
+      <Dialog open={formOpen} onOpenChange={(open) => { setFormOpen(open); if (!open) resetForm() }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingVoucher ? "Edit Voucher" : "Create New Voucher"}</DialogTitle>
-            <DialogDescription>
-              {editingVoucher ? "Update voucher details below." : "Create a new discount voucher."}
-            </DialogDescription>
+            <DialogTitle>{editingVoucher ? "Chỉnh sửa mã giảm giá" : "Tạo mã giảm giá mới"}</DialogTitle>
+            <DialogDescription>{editingVoucher ? "Cập nhật thông tin mã giảm giá bên dưới." : "Tạo một mã giảm giá mới."}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="code">Voucher Code</Label>
-                <Input
-                  id="code"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                  placeholder="e.g. SUMMER2024"
-                  className="font-mono"
-                  required
-                />
+                <Label htmlFor="code">Mã giảm giá</Label>
+                <Input id="code" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })} placeholder="Ví dụ: SUMMER2024" className="font-mono" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="type">Discount Type</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value) => setFormData({ ...formData, type: value as "percentage" | "fixed" })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Label htmlFor="type">Loại giảm giá</Label>
+                  <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value as "percentage" | "fixed" })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="percentage">Percentage (%)</SelectItem>
-                      <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                      <SelectItem value="percentage">Phần trăm (%)</SelectItem>
+                      <SelectItem value="fixed">Số tiền cố định ($)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="value">Value</Label>
-                  <Input
-                    id="value"
-                    type="number"
-                    min="1"
-                    value={formData.value}
-                    onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                    placeholder={formData.type === "percentage" ? "e.g. 15" : "e.g. 50"}
-                    required
-                  />
+                  <Label htmlFor="value">Giá trị</Label>
+                  <Input id="value" type="number" min="1" value={formData.value} onChange={(e) => setFormData({ ...formData, value: e.target.value })} placeholder={formData.type === "percentage" ? "Ví dụ: 15" : "Ví dụ: 50"} required />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="minPurchase">Min Purchase ($)</Label>
-                  <Input
-                    id="minPurchase"
-                    type="number"
-                    min="0"
-                    value={formData.minPurchase}
-                    onChange={(e) => setFormData({ ...formData, minPurchase: e.target.value })}
-                    placeholder="0"
-                    required
-                  />
+                  <Label htmlFor="minPurchase">Đơn tối thiểu ($)</Label>
+                  <Input id="minPurchase" type="number" min="0" value={formData.minPurchase} onChange={(e) => setFormData({ ...formData, minPurchase: e.target.value })} placeholder="0" required />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="usageLimit">Usage Limit</Label>
-                  <Input
-                    id="usageLimit"
-                    type="number"
-                    min="0"
-                    value={formData.usageLimit}
-                    onChange={(e) => setFormData({ ...formData, usageLimit: e.target.value })}
-                    placeholder="0 for unlimited"
-                    required
-                  />
+                  <Label htmlFor="usageLimit">Giới hạn sử dụng</Label>
+                  <Input id="usageLimit" type="number" min="0" value={formData.usageLimit} onChange={(e) => setFormData({ ...formData, usageLimit: e.target.value })} placeholder="0 là không giới hạn" required />
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="expiresAt">Expiration Date</Label>
-                <Input
-                  id="expiresAt"
-                  type="date"
-                  value={formData.expiresAt}
-                  onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
-                  required
-                />
+                <Label htmlFor="expiresAt">Ngày hết hạn</Label>
+                <Input id="expiresAt" type="date" value={formData.expiresAt} onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })} required />
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">{editingVoucher ? "Update" : "Create"} Voucher</Button>
+              <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>Hủy</Button>
+              <Button type="submit">{editingVoucher ? "Cập nhật" : "Tạo"} mã giảm giá</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <AlertDialog
-        open={deleteDialog.open}
-        onOpenChange={(open) => setDeleteDialog({ open, voucher: null })}
-      >
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, voucher: null })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Voucher</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete voucher &quot;{deleteDialog.voucher?.code}&quot;? This action
-              cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogTitle>Xóa mã giảm giá</AlertDialogTitle>
+            <AlertDialogDescription>Bạn có chắc muốn xóa mã &quot;{deleteDialog.voucher?.code}&quot; không? Hành động này không thể hoàn tác.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Xóa</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
