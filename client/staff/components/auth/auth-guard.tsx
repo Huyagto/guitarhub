@@ -7,25 +7,36 @@ import { getStaffAccessToken } from "@/lib/auth"
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const [isChecking, setIsChecking] = useState(true)
+  const [hasAccessToken, setHasAccessToken] = useState<boolean | null>(() => {
+    if (typeof window === "undefined") {
+      return null
+    }
+
+    return Boolean(getStaffAccessToken())
+  })
 
   useEffect(() => {
     const accessToken = getStaffAccessToken()
 
     if (!accessToken) {
+      setHasAccessToken(false)
       router.replace("/login")
       return
     }
 
-    setIsChecking(false)
+    setHasAccessToken(true)
   }, [router])
 
-  if (isChecking) {
+  if (hasAccessToken === null) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     )
+  }
+
+  if (!hasAccessToken) {
+    return null
   }
 
   return <>{children}</>

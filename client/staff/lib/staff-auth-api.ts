@@ -7,7 +7,7 @@ interface StaffLoginResponse {
   refreshToken: string
 }
 
-export async function loginStaff(payload: { email: string; password: string }) {
+export async function loginStaff(payload: { staffCode: string; password: string }) {
   return apiRequest<StaffLoginResponse>("/api/staff/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),

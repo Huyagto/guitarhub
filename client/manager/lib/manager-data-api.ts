@@ -1,6 +1,6 @@
 import { apiRequest } from "@/lib/api"
 import { getManagerAccessToken } from "@/lib/auth"
-import type { Brand, Category, Customer, InventoryItem, Order, Product, Voucher } from "@/lib/manager-types"
+import type { Branch, Brand, Category, Customer, InventoryItem, Order, Product, Staff, Voucher } from "@/lib/manager-types"
 
 interface DashboardKpi {
   totalRevenue: number
@@ -16,13 +16,27 @@ interface DashboardKpi {
 interface DashboardOverview {
   kpi: DashboardKpi
   salesChartData: Array<{ month: string; sales: number; orders: number }>
+  orderChannels: {
+    online: { orders: number; revenue: number }
+    store: { orders: number; revenue: number }
+  }
   categoryDistribution: Array<{ name: string; value: number; fill: string }>
   recentOrders: Order[]
   lowStockItems: InventoryItem[]
 }
 
 interface ReportsSummary extends DashboardOverview {
-  monthlyData: Array<{ month: string; sales: number; orders: number; customers: number; products: number }>
+  monthlyData: Array<{
+    month: string
+    sales: number
+    orders: number
+    onlineOrders: number
+    storeOrders: number
+    onlineRevenue: number
+    storeRevenue: number
+    customers: number
+    products: number
+  }>
   topProducts: Array<{ name: string; sales: number; revenue: number }>
 }
 
@@ -47,8 +61,13 @@ export async function getDashboardOverview() {
   return managerRequest<DashboardOverview>("/api/manager/dashboard/overview")
 }
 
-export async function getReportsSummary() {
-  return managerRequest<ReportsSummary>("/api/manager/reports/summary")
+export async function getReportsSummary(filters: { branchId?: string; startDate?: string; endDate?: string } = {}) {
+  const params = new URLSearchParams()
+  if (filters.branchId && filters.branchId !== "all") params.set("branchId", filters.branchId)
+  if (filters.startDate) params.set("startDate", filters.startDate)
+  if (filters.endDate) params.set("endDate", filters.endDate)
+  const query = params.toString()
+  return managerRequest<ReportsSummary>(`/api/manager/reports/summary${query ? `?${query}` : ""}`)
 }
 
 export async function getManagerProducts() {
@@ -73,11 +92,15 @@ export async function deleteManagerProduct(id: string) {
   return managerRequest<Product>(`/api/manager/products/${id}`, { method: "DELETE" })
 }
 
-export async function uploadManagerProductImage(file: string) {
-  return managerRequest<{ url: string; publicId: string }>("/api/manager/products/upload-image", {
+export async function uploadManagerImage(file: string) {
+  return managerRequest<{ url: string; publicId: string }>("/api/manager/uploads/image", {
     method: "POST",
     body: JSON.stringify({ file }),
   })
+}
+
+export async function uploadManagerProductImage(file: string) {
+  return uploadManagerImage(file)
 }
 
 export async function getManagerCategories() {
@@ -143,6 +166,11 @@ export async function getManagerInventory() {
   return managerRequest<InventoryItem[]>("/api/manager/inventory")
 }
 
+export async function getManagerInventoryByBranch(branchId?: string) {
+  const query = branchId && branchId !== "all" ? `?branchId=${branchId}` : ""
+  return managerRequest<InventoryItem[]>(`/api/manager/inventory${query}`)
+}
+
 export async function restockManagerInventory(id: string, quantity: number) {
   return managerRequest<InventoryItem>(`/api/manager/inventory/${id}/restock`, {
     method: "POST",
@@ -170,4 +198,41 @@ export async function updateManagerVoucher(id: string, payload: Partial<Voucher>
 
 export async function deleteManagerVoucher(id: string) {
   return managerRequest<Voucher>(`/api/manager/vouchers/${id}`, { method: "DELETE" })
+}
+
+export async function getManagerStaffs() {
+  return managerRequest<Staff[]>("/api/manager/staffs")
+}
+
+export async function getManagerBranches() {
+  return managerRequest<Branch[]>("/api/manager/branches")
+}
+
+export async function createManagerStaff(payload: { fullName: string; email: string; phone?: string; password: string }) {
+  return managerRequest<Staff>("/api/manager/staffs", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateManagerStaff(id: string, payload: { fullName?: string; email?: string; phone?: string; isActive?: boolean }) {
+  return managerRequest<Staff>(`/api/manager/staffs/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteManagerStaff(id: string) {
+  return managerRequest<Staff>(`/api/manager/staffs/${id}`, { method: "DELETE" })
+}
+
+export async function regenerateManagerStaffCode(id: string) {
+  return managerRequest<Staff>(`/api/manager/staffs/${id}/regenerate-code`, { method: "PATCH" })
+}
+
+export async function resetManagerStaffPassword(id: string, newPassword: string) {
+  return managerRequest<Staff>(`/api/manager/staffs/${id}/reset-password`, {
+    method: "PATCH",
+    body: JSON.stringify({ newPassword }),
+  })
 }

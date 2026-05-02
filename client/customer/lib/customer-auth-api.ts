@@ -1,6 +1,7 @@
 import { apiRequest } from "@/lib/api"
 import type { AuthUser } from "@/lib/auth"
 import type { StoredShippingAddress } from "@/lib/shipping-address"
+import type { OrderPaymentStatus, OrderStatus, PaymentMethod } from "@/lib/types"
 
 interface LoginResponse {
   user: AuthUser
@@ -17,6 +18,51 @@ interface RegisterPayload {
 interface LoginPayload {
   email: string
   password: string
+}
+
+export interface CustomerOrderLineItem {
+  id: string
+  productId: string
+  productName: string
+  productSku: string
+  image: string | null
+  quantity: number
+  unitPrice: number
+  lineTotal: number
+}
+
+export interface CustomerOrder {
+  id: string
+  customerId: string
+  orderNumber: string
+  customer: string
+  email: string
+  phone: string
+  items: number
+  total: number
+  subtotal: number
+  shippingFee: number
+  status: OrderStatus
+  paymentStatus: OrderPaymentStatus
+  paymentMethod: PaymentMethod
+  note: string
+  createdAt: string
+  updatedAt: string
+  shippingInfo: {
+    recipientName?: string
+    phone?: string
+    detailAddress?: string
+    ward?: string
+    district?: string
+    province?: string
+    note?: string
+  }
+  handledByStaff: {
+    id: string
+    fullName: string
+    email: string
+  } | null
+  lineItems: CustomerOrderLineItem[]
 }
 
 export async function registerCustomer(payload: RegisterPayload) {
@@ -54,11 +100,40 @@ export async function resetCustomerPassword(resetToken: string, newPassword: str
   })
 }
 
+export async function changeCustomerPassword(
+  accessToken: string,
+  payload: {
+    currentPassword: string
+    newPassword: string
+  }
+) {
+  return apiRequest<null>("/api/auth/change-password", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
 export async function getCustomerProfile(accessToken: string) {
   return apiRequest<AuthUser>("/api/auth/profile", {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
+  })
+}
+
+export async function updateCustomerProfile(
+  accessToken: string,
+  payload: { fullName: string; phone?: string }
+) {
+  return apiRequest<AuthUser>("/api/auth/profile", {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
   })
 }
 
@@ -77,4 +152,12 @@ export async function updateCustomerDefaultShippingAddress(
 
 export async function getCustomerGoogleAuthUrl() {
   return apiRequest<{ url: string }>("/api/auth/google")
+}
+
+export async function getCustomerOrders(accessToken: string) {
+  return apiRequest<CustomerOrder[]>("/api/orders", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
 }

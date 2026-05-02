@@ -11,7 +11,7 @@ export async function uploadManagerProductImage(file: string) {
   const response = await apiRequest<{
     url: string
     publicId: string
-  }>("/api/manager/products/upload-image", {
+  }>("/api/manager/uploads/image", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

@@ -25,7 +25,7 @@ export default function CartPage() {
     const defaultAddress = getDefaultShippingAddress()
 
     if (!defaultAddress) {
-      router.push("/profile?from=checkout")
+      router.push("/profile/addresses?from=checkout")
       return
     }
 

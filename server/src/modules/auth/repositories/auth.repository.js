@@ -8,6 +8,10 @@ const findById = async (id) => {
     return prisma.user.findUnique({ where: { id } });
 };
 
+const findByStaffCode = async (staffCode) => {
+    return prisma.user.findUnique({ where: { staffCode } });
+};
+
 const findByGoogleId = async (googleId) => {
     return prisma.user.findUnique({ where: { googleId } });
 };
@@ -31,6 +35,10 @@ const updateDefaultShippingAddress = async (id, defaultShippingAddress) => {
     });
 };
 
+const updateProfile = async (id, data) => {
+    return prisma.user.update({ where: { id }, data });
+};
+
 const isEmailTaken = async (email) => {
     const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     return !!user;
@@ -39,10 +47,12 @@ const isEmailTaken = async (email) => {
 module.exports = {
     findByEmail,
     findById,
+    findByStaffCode,
     findByGoogleId,
     create,
     updatePassword,
     updateGoogleId,
     updateDefaultShippingAddress,
+    updateProfile,
     isEmailTaken,
 };

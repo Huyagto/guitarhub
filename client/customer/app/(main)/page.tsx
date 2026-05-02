@@ -3,8 +3,6 @@ import { CategoriesSection } from "@/components/home/categories-section"
 import { ProductsSection } from "@/components/home/products-section"
 import { PromoBanner } from "@/components/home/promo-banner"
 import { BrandHighlights } from "@/components/home/brand-highlights"
-import { TestimonialsSection } from "@/components/home/testimonials-section"
-import { NewsletterSection } from "@/components/home/newsletter-section"
 import {
   getBestSellerProducts,
   getCatalogCategories,
@@ -45,8 +43,6 @@ export default async function HomePage() {
         viewAllHref="/shop?sort=latest"
         viewAllLabel="Xem tất cả"
       />
-      <TestimonialsSection />
-      <NewsletterSection />
     </>
   )
 }

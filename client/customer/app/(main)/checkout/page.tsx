@@ -23,7 +23,7 @@ import { formatPrice } from "@/lib/format"
 import { getAccessToken, getStoredUser } from "@/lib/auth"
 import type { PaymentMethod } from "@/lib/types"
 import { getDefaultShippingAddress } from "@/lib/shipping-address"
-import { createCheckout } from "@/lib/checkout-api"
+import { createCheckout, getAvailableCheckoutBranches, type AvailableBranch } from "@/lib/checkout-api"
 
 const paymentMethods = [
   {
@@ -57,6 +57,9 @@ export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCart()
   const [isLoading, setIsLoading] = useState(false)
   const [submitError, setSubmitError] = useState("")
+  const [branches, setBranches] = useState<AvailableBranch[]>([])
+  const [selectedBranchId, setSelectedBranchId] = useState("")
+  const [isLoadingBranches, setIsLoadingBranches] = useState(true)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod")
   const [shippingInfo, setShippingInfo] = useState({
     recipientName: "",
@@ -92,7 +95,7 @@ export default function CheckoutPage() {
     }
 
     if (!storedAddress) {
-      router.replace("/profile?from=checkout")
+      router.replace("/profile/addresses?from=checkout")
       return
     }
 
@@ -108,12 +111,36 @@ export default function CheckoutPage() {
     }))
   }, [router])
 
+  useEffect(() => {
+    const loadBranches = async () => {
+      try {
+        const availableBranches = await getAvailableCheckoutBranches(items.map((item) => item.product.id))
+        setBranches(availableBranches)
+        setSelectedBranchId((current) => current || availableBranches[0]?.id || "")
+      } catch {
+        setBranches([])
+      } finally {
+        setIsLoadingBranches(false)
+      }
+    }
+
+    if (items.length) {
+      void loadBranches()
+    }
+  }, [items])
+
+  const branchCanFulfillCart = (branch: AvailableBranch) =>
+    items.every((item) => {
+      const inventory = branch.inventory.find((entry) => entry.productId === item.product.id)
+      return Boolean(inventory && inventory.stock >= item.quantity)
+    })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const storedAddress = getDefaultShippingAddress()
     if (!storedAddress) {
-      router.replace("/profile?from=checkout")
+      router.replace("/profile/addresses?from=checkout")
       return
     }
 
@@ -125,8 +152,13 @@ export default function CheckoutPage() {
         throw new Error("Vui lòng đăng nhập để thanh toán")
       }
 
+      if (!selectedBranchId) {
+        throw new Error("Vui lòng chọn chi nhánh còn đủ hàng")
+      }
+
       const checkout = await createCheckout({
         paymentMethod,
+        branchId: selectedBranchId,
         shippingInfo: {
           recipientName: shippingInfo.recipientName,
           phone: shippingInfo.phone,
@@ -210,6 +242,48 @@ export default function CheckoutPage() {
             <div className="space-y-8 lg:col-span-2">
               <div className="rounded-xl border border-border p-6">
                 <h2 className="text-lg font-semibold text-foreground">
+                  Chi nhánh xử lý đơn
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Chọn chi nhánh còn đủ các mặt hàng trong giỏ. Đơn online sẽ trừ tồn kho tại chi nhánh này.
+                </p>
+
+                {isLoadingBranches ? (
+                  <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Đang kiểm tra tồn kho chi nhánh...
+                  </div>
+                ) : branches.length === 0 ? (
+                  <p className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                    Hiện chưa có chi nhánh nào đủ hàng cho toàn bộ giỏ hàng.
+                  </p>
+                ) : (
+                  <RadioGroup value={selectedBranchId} onValueChange={setSelectedBranchId} className="mt-5 grid gap-3">
+                    {branches.map((branch) => {
+                      const canFulfill = branchCanFulfillCart(branch)
+
+                      return (
+                        <div key={branch.id}>
+                          <RadioGroupItem value={branch.id} id={`branch-${branch.id}`} disabled={!canFulfill} className="peer sr-only" />
+                          <Label
+                            htmlFor={`branch-${branch.id}`}
+                            className="flex cursor-pointer flex-col gap-2 rounded-lg border-2 border-border p-4 transition-colors hover:bg-muted peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-data-[state=checked]:border-accent peer-data-[state=checked]:bg-accent/5"
+                          >
+                            <span className="font-medium text-foreground">{branch.name}</span>
+                            <span className="text-sm text-muted-foreground">{branch.address || branch.code}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {canFulfill ? "Đủ hàng cho giỏ hiện tại" : "Không đủ số lượng trong giỏ"}
+                            </span>
+                          </Label>
+                        </div>
+                      )
+                    })}
+                  </RadioGroup>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-border p-6">
+                <h2 className="text-lg font-semibold text-foreground">
                   Thông tin nhận hàng
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -258,7 +332,7 @@ export default function CheckoutPage() {
                   </p>
 
                   <Button asChild variant="outline" className="mt-4">
-                    <Link href="/profile?from=checkout">Đổi địa chỉ trong hồ sơ</Link>
+                    <Link href="/profile/addresses?from=checkout">Đổi địa chỉ trong hồ sơ</Link>
                   </Button>
                 </div>
 
@@ -383,7 +457,7 @@ export default function CheckoutPage() {
                   type="submit"
                   className="mt-6 w-full"
                   size="lg"
-                  disabled={isLoading}
+                  disabled={isLoading || !selectedBranchId}
                 >
                   {isLoading ? (
                     <>

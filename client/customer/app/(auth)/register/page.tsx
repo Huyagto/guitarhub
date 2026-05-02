@@ -17,6 +17,7 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [termsError, setTermsError] = useState("")
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -26,15 +27,28 @@ export default function RegisterPage() {
     agreeTerms: false,
   })
 
+  const handleTermsChange = (checked: boolean) => {
+    setFormData((current) => ({ ...current, agreeTerms: checked }))
+    if (checked) {
+      setTermsError("")
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    
+    setTermsError("")
+
     if (formData.password !== formData.confirmPassword) {
       setError("Mật khẩu xác nhận không khớp")
       return
     }
-    
+
+    if (!formData.agreeTerms) {
+      setTermsError("Vui lòng đồng ý với điều khoản trước khi tạo tài khoản.")
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -79,7 +93,9 @@ export default function RegisterPage() {
             autoComplete="name"
             required
             value={formData.fullName}
-            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+            onChange={(e) =>
+              setFormData((current) => ({ ...current, fullName: e.target.value }))
+            }
             className="mt-2"
             placeholder="Nguyễn Văn A"
           />
@@ -93,7 +109,9 @@ export default function RegisterPage() {
             autoComplete="email"
             required
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) =>
+              setFormData((current) => ({ ...current, email: e.target.value }))
+            }
             className="mt-2"
             placeholder="ban@example.com"
           />
@@ -105,7 +123,9 @@ export default function RegisterPage() {
             id="phone"
             type="tel"
             value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            onChange={(e) =>
+              setFormData((current) => ({ ...current, phone: e.target.value }))
+            }
             className="mt-2"
             placeholder="0901 234 567"
           />
@@ -120,19 +140,24 @@ export default function RegisterPage() {
               autoComplete="new-password"
               required
               value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              onChange={(e) =>
+                setFormData((current) => ({ ...current, password: e.target.value }))
+              }
               placeholder="Tạo mật khẩu"
             />
             <button
               type="button"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={() => setShowPassword((current) => !current)}
             >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" />
               ) : (
                 <Eye className="h-4 w-4" />
               )}
+              <span className="sr-only">
+                {showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              </span>
             </button>
           </div>
         </div>
@@ -147,43 +172,76 @@ export default function RegisterPage() {
               required
               value={formData.confirmPassword}
               onChange={(e) =>
-                setFormData({ ...formData, confirmPassword: e.target.value })
+                setFormData((current) => ({
+                  ...current,
+                  confirmPassword: e.target.value,
+                }))
               }
               placeholder="Nhập lại mật khẩu"
             />
             <button
               type="button"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              onClick={() => setShowConfirmPassword((current) => !current)}
             >
               {showConfirmPassword ? (
                 <EyeOff className="h-4 w-4" />
               ) : (
                 <Eye className="h-4 w-4" />
               )}
+              <span className="sr-only">
+                {showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              </span>
             </button>
           </div>
         </div>
 
-        <div className="flex items-start space-x-2">
-          <Checkbox
-            id="terms"
-            checked={formData.agreeTerms}
-            onCheckedChange={(checked) =>
-              setFormData({ ...formData, agreeTerms: checked as boolean })
-            }
-            required
-          />
-          <Label htmlFor="terms" className="text-sm font-normal leading-5">
-            Tôi đồng ý với{" "}
-            <Link href="/terms" className="text-accent hover:text-accent/90">
-              Điều khoản dịch vụ
-            </Link>{" "}
-            và{" "}
-            <Link href="/privacy" className="text-accent hover:text-accent/90">
-              Chính sách bảo mật
-            </Link>
-          </Label>
+        <div className="space-y-2">
+          <div
+            className={`rounded-xl border p-3 transition-colors ${
+              termsError
+                ? "border-destructive/40 bg-destructive/5"
+                : "border-border/70 bg-muted/20"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="terms"
+                checked={formData.agreeTerms}
+                onCheckedChange={(checked) => handleTermsChange(checked === true)}
+                aria-invalid={Boolean(termsError)}
+                className="mt-0.5"
+              />
+
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm leading-5 text-foreground">
+                  <Label
+                    htmlFor="terms"
+                    className="cursor-pointer font-normal leading-5 text-foreground"
+                  >
+                    Tôi đồng ý với
+                  </Label>
+                  <Link href="/terms" className="font-medium text-accent hover:text-accent/90">
+                    Điều khoản dịch vụ
+                  </Link>
+                  <span>và</span>
+                  <Link
+                    href="/privacy"
+                    className="font-medium text-accent hover:text-accent/90"
+                  >
+                    Chính sách bảo mật
+                  </Link>
+                </div>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Bạn cần xác nhận mục này trước khi tạo tài khoản.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {termsError ? (
+            <p className="text-sm text-destructive">{termsError}</p>
+          ) : null}
         </div>
 
         <Button type="submit" className="w-full" disabled={isLoading}>

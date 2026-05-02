@@ -20,11 +20,15 @@ const {
     zaloPayKey2,
     zaloPayPaymentUrl,
     zaloPayReturnUrl,
+    database: prisma,
 } = require('../../../../config');
 const { BadRequestError } = require('../../../../core');
 const cartRepository = require('../../../cart/shared/repositories/cart.repository');
 const { toCartResponseDto } = require('../../../cart/shared/dto/cart.response.dto');
 const paymentSessionStore = require('../../shared/services/payment-session.store');
+const orderRepository = require('../../../order/shared/repositories/order.repository');
+const { toOrderResponseDto } = require('../../../order/shared/dto/order.response.dto');
+const { emitOrderCreated, emitOrderUpdated } = require('../../../../realtime/socket.server');
 
 const buildOrderCode = () => `GH${Date.now()}`;
 
@@ -34,6 +38,26 @@ const sortObject = (input) => Object.keys(input)
         result[key] = input[key];
         return result;
     }, {});
+
+const encodeVnpayValue = (value) => encodeURIComponent(String(value)).replace(/%20/g, '+');
+
+const buildVnpayParams = (input) => Object.keys(input)
+    .sort()
+    .reduce((result, key) => {
+        const value = input[key];
+
+        if (value === undefined || value === null || value === '') {
+            return result;
+        }
+
+        result[key] = encodeVnpayValue(value);
+        return result;
+    }, {});
+
+const createVnpaySecureHash = (params) => {
+    const signData = querystring.stringify(params, { encode: false });
+    return crypto.createHmac('sha512', vnpayHashSecret).update(signData, 'utf8').digest('hex');
+};
 
 const getClientIp = (req) => req.headers['x-forwarded-for']?.split(',')[0]?.trim()
     || req.socket?.remoteAddress
@@ -48,6 +72,23 @@ const getCartSnapshot = async (userId) => {
     }
 
     return cartDto;
+};
+
+const getCheckoutCustomer = async (userId) => {
+    const user = await prisma.user.findUnique({
+        where: { id: Number(userId) },
+        select: {
+            id: true,
+            email: true,
+            fullName: true,
+        },
+    });
+
+    if (!user) {
+        throw new BadRequestError('Khong tim thay khach hang');
+    }
+
+    return user;
 };
 
 const getCheckoutTotals = (cartDto) => {
@@ -101,14 +142,13 @@ const createVnpayUrl = ({ amount, orderCode, req }) => {
         vnp_CreateDate: vnpCreateDate,
     };
 
-    const sortedParams = sortObject(rawParams);
-    const signData = querystring.stringify(sortedParams, { encode: false });
-    const secureHash = crypto.createHmac('sha512', vnpayHashSecret).update(signData).digest('hex');
+    const signedParams = buildVnpayParams(rawParams);
+    const secureHash = createVnpaySecureHash(signedParams);
 
     return `${vnpayPaymentUrl}?${querystring.stringify({
-        ...sortedParams,
+        ...signedParams,
         vnp_SecureHash: secureHash,
-    })}`;
+    }, { encode: false })}`;
 };
 
 const createMomoUrl = async ({ amount, orderCode }) => {
@@ -230,14 +270,32 @@ const createZalopayUrl = async ({ amount, orderCode, userId, items }) => {
 };
 
 const createCheckout = async (userId, payload, req) => {
-    const cartDto = await getCartSnapshot(userId);
+    const [cartDto, customer] = await Promise.all([
+        getCartSnapshot(userId),
+        getCheckoutCustomer(userId),
+    ]);
     const totals = getCheckoutTotals(cartDto);
     const orderCode = buildOrderCode();
+    const initialOrderStatus = payload.paymentMethod === 'cod' ? 'pending_confirmation' : 'awaiting_payment';
+
+    const order = await orderRepository.create({
+        user: customer,
+        orderNumber: orderCode,
+        branchId: payload.branchId,
+        shippingInfo: payload.shippingInfo,
+        paymentMethod: payload.paymentMethod,
+        paymentStatus: 'pending',
+        status: initialOrderStatus,
+        totals,
+        items: cartDto.items,
+        decrementStock: payload.paymentMethod === 'cod',
+    });
 
     paymentSessionStore.saveSession({
         orderCode,
         userId,
         paymentMethod: payload.paymentMethod,
+        branchId: payload.branchId,
         shippingInfo: payload.shippingInfo,
         items: cartDto.items,
         subtotal: totals.subtotal,
@@ -248,6 +306,7 @@ const createCheckout = async (userId, payload, req) => {
     });
 
     if (payload.paymentMethod === 'cod') {
+        emitOrderCreated(toOrderResponseDto(order));
         await clearUserCart(userId);
         return {
             orderCode,
@@ -290,17 +349,27 @@ const handleVnpayCallback = async (query) => {
     delete params.vnp_SecureHash;
     delete params.vnp_SecureHashType;
 
-    const sortedParams = sortObject(params);
-    const signData = querystring.stringify(sortedParams, { encode: false });
-    const expectedHash = crypto.createHmac('sha512', vnpayHashSecret).update(signData).digest('hex');
-    const isSuccess = secureHash === expectedHash && query.vnp_ResponseCode === '00';
+    const signedParams = buildVnpayParams(sortObject(params));
+    const expectedHash = createVnpaySecureHash(signedParams);
+    const isSuccess =
+        String(secureHash || '').toLowerCase() === String(expectedHash).toLowerCase()
+        && query.vnp_ResponseCode === '00';
 
     paymentSessionStore.updateSession(session.orderCode, {
         status: isSuccess ? 'completed' : 'failed',
     });
 
+    const updatedOrder = await orderRepository.updatePayment(session.orderCode, {
+        paymentStatus: isSuccess ? 'paid' : 'failed',
+        status: isSuccess ? 'pending_confirmation' : 'cancelled',
+    });
+
+    const orderDto = toOrderResponseDto(updatedOrder);
     if (isSuccess) {
+        emitOrderCreated(orderDto);
         await clearUserCart(session.userId);
+    } else {
+        emitOrderUpdated(orderDto);
     }
 
     return buildSuccessUrl({
@@ -323,8 +392,17 @@ const handleMomoCallback = async (payload) => {
         status: isSuccess ? 'completed' : 'failed',
     });
 
+    const updatedOrder = await orderRepository.updatePayment(orderCode, {
+        paymentStatus: isSuccess ? 'paid' : 'failed',
+        status: isSuccess ? 'pending_confirmation' : 'cancelled',
+    });
+
+    const orderDto = toOrderResponseDto(updatedOrder);
     if (isSuccess) {
+        emitOrderCreated(orderDto);
         await clearUserCart(session.userId);
+    } else {
+        emitOrderUpdated(orderDto);
     }
 
     return buildSuccessUrl({
@@ -347,6 +425,11 @@ const handleZalopayCallback = async (payload) => {
 
     if (session) {
         paymentSessionStore.updateSession(orderCode, { status: 'completed' });
+        const updatedOrder = await orderRepository.updatePayment(orderCode, {
+            paymentStatus: 'paid',
+            status: 'pending_confirmation',
+        });
+        emitOrderCreated(toOrderResponseDto(updatedOrder));
         await clearUserCart(session.userId);
     }
 

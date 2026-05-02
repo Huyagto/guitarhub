@@ -1,8 +1,7 @@
 'use strict';
 
-const { loginByRole } = require('../../shared/services');
-const { roles } = require('../../constants');
+const { loginByStaffCode } = require('../../shared/services');
 
-const loginStaff = (payload) => loginByRole({ ...payload, role: roles.STAFF });
+const loginStaff = (payload) => loginByStaffCode(payload);
 
 module.exports = loginStaff;

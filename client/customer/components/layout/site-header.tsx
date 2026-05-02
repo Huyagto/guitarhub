@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { useCart } from "@/lib/cart-context"
-import { clearAuthSession, getStoredUser } from "@/lib/auth"
+import { AUTH_SESSION_CHANGED_EVENT, clearAuthSession, getStoredUser } from "@/lib/auth"
+import { CustomerNotificationCenter } from "@/components/layout/customer-notification-center"
 
 const navigation = [
   { name: "Trang chủ", href: "/" },
@@ -43,9 +44,18 @@ export function SiteHeader() {
   const { itemCount } = useCart()
 
   useEffect(() => {
-    const user = getStoredUser()
-    setIsAuthenticated(Boolean(user))
-    setUserName(user?.fullName || "")
+    const syncUser = () => {
+      const user = getStoredUser()
+      setIsAuthenticated(Boolean(user))
+      setUserName(user?.fullName || "")
+    }
+
+    syncUser()
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, syncUser)
+
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, syncUser)
+    }
   }, [])
 
   const handleLogout = () => {
@@ -60,14 +70,20 @@ export function SiteHeader() {
         {/* Logo */}
         <div className="flex lg:flex-1">
           <Link href="/" className="-m-1.5 p-1.5">
-            <span className="text-xl font-bold tracking-tight text-foreground">
-              Guitar<span className="text-accent">Store</span>
+            <span className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-700 text-sm font-black text-white shadow-sm">
+                GH
+              </span>
+              <span className="text-xl font-bold tracking-tight text-foreground">
+                Guitar<span className="text-accent">Hub</span>
+              </span>
             </span>
           </Link>
         </div>
 
         {/* Mobile menu button */}
-        <div className="flex lg:hidden">
+        <div className="flex items-center gap-2 lg:hidden">
+          <CustomerNotificationCenter />
           <button
             type="button"
             className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-foreground"
@@ -144,6 +160,8 @@ export function SiteHeader() {
               <span className="sr-only">Giỏ hàng</span>
             </Link>
           </Button>
+
+          <CustomerNotificationCenter />
 
           {!isAuthenticated ? (
             <>
@@ -228,8 +246,13 @@ export function SiteHeader() {
         <div className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-background px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-border">
           <div className="flex items-center justify-between">
             <Link href="/" className="-m-1.5 p-1.5" onClick={() => setMobileMenuOpen(false)}>
-              <span className="text-xl font-bold tracking-tight text-foreground">
-                Guitar<span className="text-accent">Store</span>
+              <span className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-700 text-sm font-black text-white shadow-sm">
+                  GH
+                </span>
+                <span className="text-xl font-bold tracking-tight text-foreground">
+                  Guitar<span className="text-accent">Hub</span>
+                </span>
               </span>
             </Link>
             <button

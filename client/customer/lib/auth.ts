@@ -15,6 +15,8 @@ export interface AuthUser {
   createdAt?: string
   role?: "CUSTOMER" | "STAFF" | "MANAGER"
   isActive?: boolean
+  googleId?: string | null
+  hasPassword?: boolean
   defaultShippingAddress?: StoredShippingAddress | null
 }
 

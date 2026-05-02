@@ -13,6 +13,7 @@ const {
     BadRequestError,
 } = require('../../../../core');
 const { createTokens, omitPassword } = require('../utils');
+const { roles } = require('../../constants');
 
 const loginByRole = async ({
     email,
@@ -75,6 +76,30 @@ const updateUserDefaultShippingAddress = async (userId, payload) => {
     return omitPassword(updatedUser);
 };
 
+const loginByStaffCode = async ({ staffCode, password }) => {
+    const user = await authRepository.findByStaffCode(staffCode);
+    if (!user || user.role !== roles.STAFF) throw new AuthFailureError('Mã nhân viên hoặc mật khẩu không đúng');
+    if (!user.isActive) throw new ForbiddenError('Tài khoản đã bị vô hiệu hóa');
+
+    const isPasswordValid = await comparePassword(password, user.password);
+    if (!isPasswordValid) throw new AuthFailureError('Mã nhân viên hoặc mật khẩu không đúng');
+
+    const tokens = createTokens(user);
+    await tokenRepository.save(user.id, tokens.refreshToken);
+    return { user: omitPassword(user), ...tokens };
+};
+
+const updateUserProfile = async (userId, { fullName, phone }) => {
+    const user = await authRepository.findById(userId);
+    if (!user) throw new NotFoundError('Không tìm thấy người dùng');
+
+    const data = { fullName };
+    if (phone !== undefined) data.phone = phone || null;
+
+    const updatedUser = await authRepository.updateProfile(userId, data);
+    return omitPassword(updatedUser);
+};
+
 const changeUserPassword = async (userId, { currentPassword, newPassword }, options = {}) => {
     const { passwordlessMessage } = options;
     const user = await authRepository.findById(userId);
@@ -94,9 +119,11 @@ const changeUserPassword = async (userId, { currentPassword, newPassword }, opti
 
 module.exports = {
     loginByRole,
+    loginByStaffCode,
     logoutByUserId,
     refreshUserSession,
     getUserProfileById,
+    updateUserProfile,
     updateUserDefaultShippingAddress,
     changeUserPassword,
 };

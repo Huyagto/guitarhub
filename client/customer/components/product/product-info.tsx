@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Star, Heart, Share2, Check, Truck, ShieldCheck, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ import { QuantitySelector } from "@/components/ui/quantity-selector"
 import { formatPrice } from "@/lib/format"
 import type { Product } from "@/lib/types"
 import { useCart } from "@/lib/cart-context"
+import { isProductWishlisted, toggleWishlistItem, WISHLIST_CHANGED_EVENT } from "@/lib/wishlist"
 
 interface ProductInfoProps {
   product: Product
@@ -31,6 +32,19 @@ export function ProductInfo({ product }: ProductInfoProps) {
   const handleBuyNow = () => {
     addItem(product, quantity)
     router.push("/cart")
+  }
+
+  useEffect(() => {
+    const syncWishlist = () => setIsWishlisted(isProductWishlisted(product.id))
+
+    syncWishlist()
+    window.addEventListener(WISHLIST_CHANGED_EVENT, syncWishlist)
+    return () => window.removeEventListener(WISHLIST_CHANGED_EVENT, syncWishlist)
+  }, [product.id])
+
+  const handleToggleWishlist = () => {
+    toggleWishlistItem(product)
+    setIsWishlisted(isProductWishlisted(product.id))
   }
 
   return (
@@ -145,7 +159,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
             variant="ghost"
             size="sm"
             className="gap-2"
-            onClick={() => setIsWishlisted(!isWishlisted)}
+            onClick={handleToggleWishlist}
           >
             <Heart
               className={`h-4 w-4 ${

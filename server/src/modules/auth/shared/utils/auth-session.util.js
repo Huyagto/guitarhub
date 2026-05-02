@@ -9,11 +9,15 @@ const {
     googleClientId,
     googleClientSecret,
     googleLoginUri,
+    customerAppUrl,
 } = require('../../../../config');
 
 const omitPassword = (user) => {
-    const { password: _, ...rest } = user;
-    return rest;
+    const { password, ...rest } = user;
+    return {
+        ...rest,
+        hasPassword: Boolean(password),
+    };
 };
 
 const createTokens = (user) => {
@@ -27,8 +31,24 @@ const createTokens = (user) => {
 const getGoogleOAuth2Client = () =>
     new google.auth.OAuth2(googleClientId, googleClientSecret, googleLoginUri);
 
+const buildCustomerGoogleCallbackUrl = ({ accessToken, refreshToken, user, error }) => {
+    const callbackBaseUrl = `${customerAppUrl.replace(/\/$/, '')}/google/callback`;
+    const hashParams = new URLSearchParams();
+
+    if (error) {
+        hashParams.set('error', error);
+    } else {
+        hashParams.set('accessToken', accessToken);
+        hashParams.set('refreshToken', refreshToken);
+        hashParams.set('user', Buffer.from(JSON.stringify(user), 'utf8').toString('base64url'));
+    }
+
+    return `${callbackBaseUrl}#${hashParams.toString()}`;
+};
+
 module.exports = {
     omitPassword,
     createTokens,
     getGoogleOAuth2Client,
+    buildCustomerGoogleCallbackUrl,
 };

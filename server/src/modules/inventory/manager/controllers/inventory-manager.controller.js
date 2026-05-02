@@ -6,7 +6,7 @@ const inventoryManagerService = require('../services/inventory-manager.service')
 
 const getInventory = async (req, res, next) => {
     try {
-        const metadata = await inventoryManagerService.getInventory();
+        const metadata = await inventoryManagerService.getInventory({ branchId: req.query.branchId });
         return new OK({ message: 'Lấy tồn kho thành công', metadata }).send(res);
     } catch (error) {
         return next(error);

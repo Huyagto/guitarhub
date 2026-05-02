@@ -6,7 +6,7 @@ module.exports = [
     body('id').notEmpty().withMessage('Mã địa chỉ không được để trống'),
     body('userId').optional().isString(),
     body('recipientName').trim().notEmpty().withMessage('Người nhận không được để trống'),
-    body('phone').trim().notEmpty().withMessage('Số điện thoại không được để trống'),
+    body('phone').optional({ checkFalsy: true }).trim().isString(),
     body('province').trim().notEmpty().withMessage('Tỉnh / Thành phố không được để trống'),
     body('district').trim().notEmpty().withMessage('Quận / Huyện không được để trống'),
     body('ward').trim().notEmpty().withMessage('Phường / Xã không được để trống'),

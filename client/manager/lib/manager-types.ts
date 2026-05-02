@@ -1,3 +1,31 @@
+export interface Staff {
+  id: string
+  fullName: string
+  email: string
+  phone: string
+  staffCode: string
+  branchId?: string
+  branch?: {
+    id: string
+    name: string
+    code: string
+  } | null
+  isActive: boolean
+  createdAt: string
+}
+
+export interface Branch {
+  id: string
+  name: string
+  code: string
+  address: string
+  phone: string
+  status: "active" | "inactive"
+  staffCount: number
+  inventoryItems: number
+  createdAt: string
+}
+
 export interface Product {
   id: string
   name: string
@@ -19,6 +47,7 @@ export interface Category {
   id: string
   name: string
   description: string
+  image?: string | null
   productCount: number
   status: "active" | "inactive"
 }
@@ -26,21 +55,73 @@ export interface Category {
 export interface Brand {
   id: string
   name: string
-  logo: string
+  logo?: string | null
   productCount: number
   status: "active" | "inactive"
 }
 
+export type OrderStatus =
+  | "awaiting_payment"
+  | "pending_confirmation"
+  | "confirmed"
+  | "preparing"
+  | "ready_to_ship"
+  | "shipping"
+  | "delivered"
+  | "cancelled"
+
+export type OrderPaymentStatus = "pending" | "paid" | "failed" | "refunded"
+export type OrderPaymentMethod = "cod" | "vnpay" | "momo" | "zalopay" | "cash" | "bank_transfer"
+
+export interface OrderLineItem {
+  id: string
+  productId: string
+  productName: string
+  productSku: string
+  image: string | null
+  quantity: number
+  unitPrice: number
+  lineTotal: number
+}
+
 export interface Order {
   id: string
+  customerId: string | null
   orderNumber: string
   customer: string
   email: string
+  phone?: string
   items: number
+  subtotal?: number
+  shippingFee?: number
   total: number
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled"
-  paymentStatus: "paid" | "pending" | "refunded"
+  status: OrderStatus
+  paymentStatus: OrderPaymentStatus
+  paymentMethod?: OrderPaymentMethod
+  source?: "online" | "store"
+  branch?: {
+    id: string
+    name: string
+    code: string
+  } | null
+  note?: string
   createdAt: string
+  updatedAt?: string
+  shippingInfo?: {
+    recipientName?: string
+    phone?: string
+    province?: string
+    district?: string
+    ward?: string
+    detailAddress?: string
+    displayName?: string
+  }
+  handledByStaff?: {
+    id: string
+    fullName: string
+    email: string
+  } | null
+  lineItems?: OrderLineItem[]
 }
 
 export interface Customer {
@@ -56,6 +137,8 @@ export interface Customer {
 
 export interface InventoryItem {
   id: string
+  branchId?: string
+  branchName?: string
   productId: string
   productName: string
   sku: string

@@ -5,7 +5,6 @@ const productRepository = require('../../shared/repositories/product.repository'
 const categoryRepository = require('../../../category/shared/repositories/category.repository');
 const brandRepository = require('../../../brand/shared/repositories/brand.repository');
 const { toManagerProductResponseDto } = require('../../shared/dto/product.response.dto');
-const { uploadProductImage } = require('../../shared/services/product-image.service');
 
 const ensureRelationsExist = async (categoryId, brandId) => {
     const [category, brand] = await Promise.all([
@@ -118,13 +117,10 @@ const deleteProduct = async (id) => {
     return toManagerProductResponseDto(product);
 };
 
-const uploadManagerProductImage = async (payload) => uploadProductImage(payload);
-
 module.exports = {
     getProducts,
     getProductById,
     createProduct,
     updateProduct,
     deleteProduct,
-    uploadManagerProductImage,
 };

@@ -42,6 +42,15 @@ const getProductBySlug = async (req, res, next) => {
     }
 };
 
+const getAvailableBranches = async (req, res, next) => {
+    try {
+        const metadata = await productCustomerService.getAvailableBranches(req.query.productIds);
+        return new OK({ message: 'Lay chi nhanh con hang thanh cong', metadata }).send(res);
+    } catch (error) {
+        return next(error);
+    }
+};
+
 const getRelatedProducts = async (req, res, next) => {
     try {
         validateRequest(req);
@@ -57,5 +66,6 @@ module.exports = {
     getBestSellerProducts,
     getNewArrivalProducts,
     getProductBySlug,
+    getAvailableBranches,
     getRelatedProducts,
 };

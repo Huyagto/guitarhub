@@ -9,5 +9,6 @@ const router = express.Router();
 
 router.use(authenticate, authorize(roles.STAFF));
 router.get('/catalog', controller.getPosCatalog);
+router.post('/vouchers/validate', controller.validatePosVoucher);
 
 module.exports = router;

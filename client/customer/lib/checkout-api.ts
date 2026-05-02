@@ -4,6 +4,7 @@ import type { PaymentMethod } from "@/lib/types"
 
 interface CheckoutPayload {
   paymentMethod: PaymentMethod
+  branchId: string
   shippingInfo: {
     recipientName: string
     phone: string
@@ -15,6 +16,15 @@ interface CheckoutPayload {
     lat?: string
     lon?: string
   }
+}
+
+export interface AvailableBranch {
+  id: string
+  name: string
+  code: string
+  address: string
+  phone: string
+  inventory: Array<{ productId: string; productName: string; sku: string; stock: number }>
 }
 
 interface CheckoutResponse {
@@ -38,6 +48,14 @@ export async function createCheckout(payload: CheckoutPayload) {
     },
     body: JSON.stringify(payload),
   })
+
+  return response.metadata
+}
+
+export async function getAvailableCheckoutBranches(productIds: string[]) {
+  const response = await apiRequest<AvailableBranch[]>(
+    `/api/products/branches/available?productIds=${productIds.join(",")}`
+  )
 
   return response.metadata
 }

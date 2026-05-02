@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useState } from "react"
 import { Topbar } from "@/components/dashboard/topbar"
 import { DataTable } from "@/components/dashboard/data-table"
@@ -14,8 +15,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import type { Brand } from "@/lib/manager-types"
 import { cn } from "@/lib/utils"
-import { Loader2, MoreHorizontal, Pencil, Plus, Tags, Trash2 } from "lucide-react"
-import { createManagerBrand, deleteManagerBrand, getManagerBrands, updateManagerBrand } from "@/lib/manager-data-api"
+import { Loader2, MoreHorizontal, Pencil, Plus, Tags, Trash2, Upload } from "lucide-react"
+import { createManagerBrand, deleteManagerBrand, getManagerBrands, updateManagerBrand, uploadManagerImage } from "@/lib/manager-data-api"
 import { getErrorMessage } from "@/lib/api"
 
 export default function BrandsPage() {
@@ -25,7 +26,8 @@ export default function BrandsPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; brand: Brand | null }>({ open: false, brand: null })
-  const [formData, setFormData] = useState({ name: "", status: "active" as "active" | "inactive" })
+  const [formData, setFormData] = useState({ name: "", logo: "", status: "active" as "active" | "inactive" })
+  const [isUploading, setIsUploading] = useState(false)
 
   useEffect(() => {
     const loadBrands = async () => {
@@ -43,18 +45,38 @@ export default function BrandsPage() {
   }, [])
 
   const resetForm = () => {
-    setFormData({ name: "", status: "active" })
+    setFormData({ name: "", logo: "", status: "active" })
     setEditingBrand(null)
   }
 
   const handleOpenForm = (brand?: Brand) => {
     if (brand) {
       setEditingBrand(brand)
-      setFormData({ name: brand.name, status: brand.status })
+      setFormData({ name: brand.name, logo: brand.logo || "", status: brand.status })
     } else {
       resetForm()
     }
     setFormOpen(true)
+  }
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async () => {
+      try {
+        setIsUploading(true)
+        const upload = await uploadManagerImage(String(reader.result))
+        setFormData((prev) => ({ ...prev, logo: upload.metadata.url }))
+      } catch (uploadError) {
+        setError(getErrorMessage(uploadError, "Không thể tải ảnh thương hiệu"))
+      } finally {
+        setIsUploading(false)
+      }
+    }
+
+    reader.readAsDataURL(file)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,7 +86,7 @@ export default function BrandsPage() {
         const response = await updateManagerBrand(editingBrand.id, formData)
         setBrands((prev) => prev.map((item) => (item.id === editingBrand.id ? response.metadata : item)))
       } else {
-        const response = await createManagerBrand({ ...formData, logo: "/placeholder.svg?height=40&width=40", productCount: 0 })
+        const response = await createManagerBrand({ ...formData, productCount: 0 })
         setBrands((prev) => [response.metadata, ...prev])
       }
       setFormOpen(false)
@@ -93,9 +115,15 @@ export default function BrandsPage() {
       header: "Thương hiệu",
       render: (brand: Brand) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-            <Tags className="h-5 w-5 text-muted-foreground" />
-          </div>
+          {brand.logo ? (
+            <div className="relative h-10 w-10 overflow-hidden rounded-lg border bg-secondary">
+              <Image src={brand.logo} alt={brand.name} fill className="object-cover" />
+            </div>
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
+              <Tags className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
           <p className="font-medium text-foreground">{brand.name}</p>
         </div>
       ),
@@ -177,6 +205,26 @@ export default function BrandsPage() {
                 <Label htmlFor="name">Tên thương hiệu</Label>
                 <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Nhập tên thương hiệu" required />
               </div>
+              <div className="grid gap-3">
+                <Label htmlFor="logo">Logo thương hiệu</Label>
+                <Input id="logo" type="file" accept="image/*" onChange={handleFileChange} />
+                {isUploading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Đang tải ảnh lên Cloudinary...
+                  </div>
+                ) : null}
+                {formData.logo ? (
+                  <div className="relative h-32 overflow-hidden rounded-lg border bg-muted">
+                    <Image src={formData.logo} alt="Logo thương hiệu" fill className="object-cover" />
+                  </div>
+                ) : (
+                  <div className="flex h-24 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Chưa có logo thương hiệu
+                  </div>
+                )}
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="status">Trạng thái</Label>
                 <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value as "active" | "inactive" })}>
@@ -190,7 +238,7 @@ export default function BrandsPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>Hủy</Button>
-              <Button type="submit">{editingBrand ? "Cập nhật" : "Thêm"} thương hiệu</Button>
+              <Button type="submit" disabled={isUploading}>{editingBrand ? "Cập nhật" : "Thêm"} thương hiệu</Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -1,7 +1,5 @@
-import Image from "next/image"
 import { Star } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { mockReviews } from "@/lib/mock-data"
 import type { Product } from "@/lib/types"
 
 interface ProductTabsProps {
@@ -9,8 +7,6 @@ interface ProductTabsProps {
 }
 
 export function ProductTabs({ product }: ProductTabsProps) {
-  const reviews = mockReviews.filter((r) => r.productId === product.id)
-
   return (
     <Tabs defaultValue="description" className="mt-12">
       <TabsList className="w-full justify-start border-b rounded-none bg-transparent p-0">
@@ -90,61 +86,14 @@ export function ProductTabs({ product }: ProductTabsProps) {
             </div>
           </div>
 
-          {/* Individual reviews */}
-          {reviews.length > 0 ? (
-            <div className="space-y-6">
-              {reviews.map((review) => (
-                <div key={review.id} className="flex gap-4">
-                  {review.userAvatar ? (
-                    <Image
-                      src={review.userAvatar}
-                      alt={review.userName}
-                      width={48}
-                      height={48}
-                      className="h-12 w-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                      <span className="text-lg font-medium text-muted-foreground">
-                        {review.userName[0]}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-foreground">
-                        {review.userName}
-                      </span>
-                      <div className="flex items-center gap-0.5">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-3 w-3 ${
-                              i < review.rating
-                                ? "fill-accent text-accent"
-                                : "fill-muted text-muted"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(review.createdAt).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </p>
-                    <p className="mt-2 text-muted-foreground">{review.comment}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-8">
-              No reviews yet. Be the first to review this product!
+          <div className="rounded-xl border border-dashed border-border bg-muted/30 px-6 py-8 text-center">
+            <p className="text-foreground">
+              Chi tiết đánh giá sản phẩm đang được cập nhật.
             </p>
-          )}
+            <p className="mt-2 text-sm text-muted-foreground">
+              Hiện tại trang này chỉ hiển thị điểm đánh giá và số lượng review từ dữ liệu thực.
+            </p>
+          </div>
         </div>
       </TabsContent>
     </Tabs>

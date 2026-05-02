@@ -25,10 +25,6 @@ const createProductValidator = [
     body('isNewArrival').optional().isBoolean(),
 ];
 
-const uploadProductImageValidator = [
-    body('file').isString().notEmpty().withMessage('Anh tai len khong hop le'),
-];
-
 const updateProductValidator = [
     param('id').isInt({ min: 1 }).withMessage('Id sản phẩm không hợp lệ'),
     body('name').optional().trim().notEmpty().withMessage('Tên sản phẩm không được để trống'),
@@ -55,5 +51,4 @@ module.exports = {
     createProductValidator,
     updateProductValidator,
     productIdParamValidator,
-    uploadProductImageValidator,
 };

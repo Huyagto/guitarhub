@@ -9,10 +9,11 @@ const { customerCategoryRoutes, staffCategoryRoutes, managerCategoryRoutes } = r
 const { customerBrandRoutes, managerBrandRoutes } = require('./modules/brand');
 const { customerCartRoutes } = require('./modules/cart');
 const { paymentCustomerRoutes } = require('./modules/payment');
-const { managerOrderRoutes } = require('./modules/order');
+const { customerOrderRoutes, managerOrderRoutes, staffOrderRoutes } = require('./modules/order');
 const { managerInventoryRoutes } = require('./modules/inventory');
 const { managerReportRoutes } = require('./modules/report');
 const { managerManagementRoutes, staffManagementRoutes } = require('./modules/management');
+const { managerUploadRoutes } = require('./modules/upload');
 
 const app = express();
 
@@ -39,14 +40,17 @@ app.use('/api/categories', customerCategoryRoutes);
 app.use('/api/brands', customerBrandRoutes);
 app.use('/api/cart', customerCartRoutes);
 app.use('/api/payments', paymentCustomerRoutes);
+app.use('/api/orders', customerOrderRoutes);
 app.use('/api/staff/products', staffProductRoutes);
 app.use('/api/staff/categories', staffCategoryRoutes);
+app.use('/api/staff/orders', staffOrderRoutes);
 app.use('/api/manager/products', managerProductRoutes);
 app.use('/api/manager/categories', managerCategoryRoutes);
 app.use('/api/manager/brands', managerBrandRoutes);
 app.use('/api/manager/orders', managerOrderRoutes);
 app.use('/api/manager/inventory', managerInventoryRoutes);
 app.use('/api/manager/reports', managerReportRoutes);
+app.use('/api/manager/uploads', managerUploadRoutes);
 app.use('/api/manager', managerManagementRoutes);
 app.use('/api/staff/pos', staffManagementRoutes);
 

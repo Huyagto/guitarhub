@@ -15,7 +15,7 @@ export default function StaffLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
-  const [formData, setFormData] = useState({ email: "", password: "" })
+  const [formData, setFormData] = useState({ staffCode: "", password: "" })
 
   useEffect(() => {
     if (getStaffAccessToken()) {
@@ -47,7 +47,7 @@ export default function StaffLoginPage() {
             <Store className="h-7 w-7 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">Đăng nhập nhân viên</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Truy cập hệ thống bán hàng bằng tài khoản nhân viên</p>
+          <p className="mt-2 text-sm text-muted-foreground">Đăng nhập bằng mã nhân viên do quản lý cấp</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -58,14 +58,14 @@ export default function StaffLoginPage() {
           ) : null}
 
           <div>
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="staffCode">Mã nhân viên</Label>
             <Input
-              id="email"
-              type="email"
+              id="staffCode"
               required
-              className="mt-2"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="mt-2 font-mono tracking-widest"
+              value={formData.staffCode}
+              onChange={(e) => setFormData({ ...formData, staffCode: e.target.value })}
+              placeholder="VD: 0010000"
             />
           </div>
 

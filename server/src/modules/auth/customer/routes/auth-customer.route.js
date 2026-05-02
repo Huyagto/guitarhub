@@ -12,6 +12,7 @@ const {
     resetCustomerPasswordValidator,
     changeCustomerPasswordValidator,
     refreshCustomerTokenValidator,
+    updateCustomerProfileValidator,
     updateCustomerDefaultShippingAddressValidator,
 } = require('../validators');
 
@@ -27,6 +28,7 @@ router.get('/google', customerAuthController.googleAuthUrl);
 router.get('/google/callback', customerAuthController.googleCallback);
 router.post('/logout', authenticate, authorize(roles.CUSTOMER), customerAuthController.logout);
 router.get('/profile', authenticate, authorize(roles.CUSTOMER), customerAuthController.getProfile);
+router.patch('/profile', authenticate, authorize(roles.CUSTOMER), updateCustomerProfileValidator, customerAuthController.updateProfile);
 router.patch(
     '/profile/address',
     authenticate,

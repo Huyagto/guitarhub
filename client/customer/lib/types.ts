@@ -72,11 +72,21 @@ export interface CartItem {
 
 // Order Types
 export type OrderStatus = 
+  | 'awaiting_payment'
   | 'pending'
+  | 'pending_confirmation'
   | 'confirmed'
+  | 'preparing'
+  | 'ready_to_ship'
   | 'shipping'
   | 'delivered'
   | 'cancelled'
+
+export type OrderPaymentStatus =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "refunded"
 
 export interface OrderItem {
   id: string

@@ -1,4 +1,5 @@
-﻿'use strict';
+'use strict';
 
-module.exports = {};
-
+module.exports = {
+    ...require('./order-staff.service'),
+};

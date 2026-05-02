@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useState } from "react"
 import { Topbar } from "@/components/dashboard/topbar"
 import { DataTable } from "@/components/dashboard/data-table"
@@ -14,10 +15,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import type { Category } from "@/lib/manager-types"
-import { FolderTree, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
+import { FolderTree, Loader2, MoreHorizontal, Pencil, Plus, Trash2, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getErrorMessage } from "@/lib/api"
-import { createManagerCategory, deleteManagerCategory, getManagerCategories, updateManagerCategory } from "@/lib/manager-data-api"
+import { createManagerCategory, deleteManagerCategory, getManagerCategories, updateManagerCategory, uploadManagerImage } from "@/lib/manager-data-api"
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([])
@@ -26,7 +27,8 @@ export default function CategoriesPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; category: Category | null }>({ open: false, category: null })
-  const [formData, setFormData] = useState({ name: "", description: "", status: "active" as "active" | "inactive" })
+  const [formData, setFormData] = useState({ name: "", description: "", image: "", status: "active" as "active" | "inactive" })
+  const [isUploading, setIsUploading] = useState(false)
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -44,18 +46,38 @@ export default function CategoriesPage() {
   }, [])
 
   const resetForm = () => {
-    setFormData({ name: "", description: "", status: "active" })
+    setFormData({ name: "", description: "", image: "", status: "active" })
     setEditingCategory(null)
   }
 
   const handleOpenForm = (category?: Category) => {
     if (category) {
       setEditingCategory(category)
-      setFormData({ name: category.name, description: category.description, status: category.status })
+      setFormData({ name: category.name, description: category.description, image: category.image || "", status: category.status })
     } else {
       resetForm()
     }
     setFormOpen(true)
+  }
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async () => {
+      try {
+        setIsUploading(true)
+        const upload = await uploadManagerImage(String(reader.result))
+        setFormData((prev) => ({ ...prev, image: upload.metadata.url }))
+      } catch (uploadError) {
+        setError(getErrorMessage(uploadError, "Không thể tải ảnh danh mục"))
+      } finally {
+        setIsUploading(false)
+      }
+    }
+
+    reader.readAsDataURL(file)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,9 +116,15 @@ export default function CategoriesPage() {
       header: "Danh mục",
       render: (category: Category) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-            <FolderTree className="h-5 w-5 text-muted-foreground" />
-          </div>
+          {category.image ? (
+            <div className="relative h-10 w-10 overflow-hidden rounded-lg border bg-secondary">
+              <Image src={category.image} alt={category.name} fill className="object-cover" />
+            </div>
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
+              <FolderTree className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
           <div>
             <p className="font-medium text-foreground">{category.name}</p>
             <p className="text-sm text-muted-foreground line-clamp-1">{category.description}</p>
@@ -185,6 +213,26 @@ export default function CategoriesPage() {
                 <Label htmlFor="description">Mô tả</Label>
                 <Textarea id="description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Nhập mô tả danh mục" rows={3} />
               </div>
+              <div className="grid gap-3">
+                <Label htmlFor="image">Ảnh danh mục</Label>
+                <Input id="image" type="file" accept="image/*" onChange={handleFileChange} />
+                {isUploading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Đang tải ảnh lên Cloudinary...
+                  </div>
+                ) : null}
+                {formData.image ? (
+                  <div className="relative h-32 overflow-hidden rounded-lg border bg-muted">
+                    <Image src={formData.image} alt="Ảnh danh mục" fill className="object-cover" />
+                  </div>
+                ) : (
+                  <div className="flex h-24 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Chưa có ảnh danh mục
+                  </div>
+                )}
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="status">Trạng thái</Label>
                 <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value as "active" | "inactive" })}>
@@ -198,7 +246,7 @@ export default function CategoriesPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>Hủy</Button>
-              <Button type="submit">{editingCategory ? "Cập nhật" : "Thêm"} danh mục</Button>
+              <Button type="submit" disabled={isUploading}>{editingCategory ? "Cập nhật" : "Thêm"} danh mục</Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -1,10 +1,9 @@
 import {
   BarChart3,
   BriefcaseBusiness,
-  FileText,
+  Building2,
   FolderTree,
   HeartHandshake,
-  LayoutDashboard,
   LineChart,
   Package,
   Settings,
@@ -59,16 +58,16 @@ export interface ModeConfig {
 const MANAGER_MODE_STORAGE_KEY = "manager_active_mode"
 
 const staffNavigation: ModeNavigationItem[] = [
-  { name: "Bảng điều hành", href: "/manager", icon: LayoutDashboard },
+  { name: "Chi nhánh", href: "/manager/branches", icon: Building2 },
   { name: "Sản phẩm", href: "/manager/products", icon: Package },
   { name: "Danh mục", href: "/manager/categories", icon: FolderTree },
   { name: "Thương hiệu", href: "/manager/brands", icon: Tags },
   { name: "Kho hàng", href: "/manager/inventory", icon: Warehouse },
+  { name: "Nhân viên", href: "/manager/staff", icon: Users },
   { name: "Cài đặt", href: "/manager/settings", icon: Settings },
 ]
 
 const customerNavigation: ModeNavigationItem[] = [
-  { name: "Trung tâm khách hàng", href: "/manager/customers", icon: Users },
   { name: "Đơn hàng", href: "/manager/orders", icon: ShoppingCart },
   { name: "Voucher", href: "/manager/vouchers", icon: Ticket },
   { name: "Cài đặt dịch vụ", href: "/manager/settings", icon: UserCog },
@@ -76,7 +75,7 @@ const customerNavigation: ModeNavigationItem[] = [
 
 const reportsNavigation: ModeNavigationItem[] = [
   { name: "Tổng quan báo cáo", href: "/manager/reports", icon: BarChart3 },
-  { name: "Đơn hàng", href: "/manager/orders", icon: ShoppingCart },
+  { name: "Đơn hàng", href: "/manager/reports/orders", icon: ShoppingCart },
   { name: "Khách hàng", href: "/manager/customers", icon: Users },
   { name: "Kho hàng", href: "/manager/inventory", icon: Warehouse },
 ]
@@ -89,7 +88,7 @@ export const managerModeConfigs: Record<ManagerMode, ModeConfig> = {
     icon: BriefcaseBusiness,
     title: "Khu vận hành staff",
     subtitle: "Tập trung vào sản phẩm, kho và cấu hình vận hành cửa hàng.",
-    homeHref: "/manager",
+    homeHref: "/manager/products",
     searchPlaceholder: "Tìm sản phẩm, SKU, thương hiệu hoặc tồn kho...",
     footerRole: "Điều phối vận hành",
     accentClassName: "from-amber-500/20 via-orange-500/10 to-transparent",
@@ -115,9 +114,9 @@ export const managerModeConfigs: Record<ManagerMode, ModeConfig> = {
     shortLabel: "Customer",
     icon: HeartHandshake,
     title: "Khu chăm sóc khách hàng",
-    subtitle: "Theo dõi khách hàng, đơn hàng và ưu đãi trong một luồng riêng.",
-    homeHref: "/manager/customers",
-    searchPlaceholder: "Tìm khách hàng, email, đơn hàng hoặc voucher...",
+    subtitle: "Quản lý đơn hàng, voucher và cấu hình dịch vụ khách hàng.",
+    homeHref: "/manager/orders",
+    searchPlaceholder: "Tìm đơn hàng, voucher hoặc cấu hình dịch vụ...",
     footerRole: "Điều phối trải nghiệm",
     accentClassName: "from-sky-500/20 via-cyan-500/10 to-transparent",
     workspaceClassName: "from-sky-500/10 via-background to-background",
@@ -127,7 +126,6 @@ export const managerModeConfigs: Record<ManagerMode, ModeConfig> = {
     topbarLinks: customerNavigation,
     quickActions: [
       { name: "Xem đơn hàng mới", href: "/manager/orders", description: "Ưu tiên xử lý đơn mới phát sinh." },
-      { name: "Chăm sóc khách hàng", href: "/manager/customers", description: "Theo dõi nhóm khách hàng quan trọng." },
       { name: "Tạo ưu đãi", href: "/manager/vouchers", description: "Thiết lập mã giảm giá mới." },
     ],
     notifications: [
@@ -154,7 +152,7 @@ export const managerModeConfigs: Record<ManagerMode, ModeConfig> = {
     topbarLinks: reportsNavigation,
     quickActions: [
       { name: "Mở báo cáo doanh thu", href: "/manager/reports", description: "Xem tăng trưởng và hiệu suất bán hàng." },
-      { name: "Phân tích đơn hàng", href: "/manager/orders", description: "Đối chiếu trạng thái đơn và thanh toán." },
+      { name: "Phân tích đơn hàng", href: "/manager/reports/orders", description: "Đối chiếu online, tại cửa hàng và doanh thu." },
       { name: "Phân tích khách hàng", href: "/manager/customers", description: "Theo dõi hành vi và giá trị khách hàng." },
     ],
     notifications: [
@@ -166,9 +164,9 @@ export const managerModeConfigs: Record<ManagerMode, ModeConfig> = {
 }
 
 const routeModeMap: Array<{ mode: ManagerMode; paths: string[] }> = [
-  { mode: "reports", paths: ["/manager/reports"] },
-  { mode: "customer", paths: ["/manager/customers", "/manager/orders", "/manager/vouchers"] },
-  { mode: "staff", paths: ["/manager", "/manager/products", "/manager/categories", "/manager/brands", "/manager/inventory", "/manager/settings"] },
+  { mode: "reports", paths: ["/manager", "/manager/reports", "/manager/customers"] },
+  { mode: "customer", paths: ["/manager/orders", "/manager/vouchers"] },
+  { mode: "staff", paths: ["/manager/branches", "/manager/products", "/manager/categories", "/manager/brands", "/manager/inventory", "/manager/settings"] },
 ]
 
 export function getModeFromPathname(pathname: string): ManagerMode {

@@ -58,9 +58,32 @@ const findBySlug = async (slug) => {
 };
 
 const create = async (data) => {
-    return prisma.product.create({
-        data,
-        include: productInclude,
+    return prisma.$transaction(async (tx) => {
+        const product = await tx.product.create({
+            data,
+            include: productInclude,
+        });
+
+        const branches = await tx.branch.findMany({
+            where: { status: 'ACTIVE' },
+            orderBy: { createdAt: 'asc' },
+            select: { id: true },
+        });
+
+        if (branches.length) {
+            await tx.branchInventory.createMany({
+                data: branches.map((branch, index) => ({
+                    branchId: branch.id,
+                    productId: product.id,
+                    stock: index === 0 ? Number(data.stock || 0) : 0,
+                    minStock: data.minStock || 5,
+                    maxStock: data.maxStock || 20,
+                })),
+                skipDuplicates: true,
+            });
+        }
+
+        return product;
     });
 };
 

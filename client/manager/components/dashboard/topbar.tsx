@@ -34,10 +34,13 @@ export function Topbar({ title, description }: TopbarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [userName, setUserName] = useState("Quản lý")
-  const [activeMode, setActiveMode] = useState<ManagerMode>(() => getStoredManagerMode() || getModeFromPathname(pathname))
+  const [activeMode, setActiveMode] = useState<ManagerMode>(() => getModeFromPathname(pathname))
   const modeConfig = managerModeConfigs[activeMode]
   const modeOptions: ManagerMode[] = ["staff", "customer", "reports"]
   const ModeIcon = modeConfig.icon
+  const activeTopbarHref = modeConfig.topbarLinks
+    .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href
 
   useEffect(() => {
     const user = getStoredManagerUser()
@@ -54,13 +57,17 @@ export function Topbar({ title, description }: TopbarProps) {
       return
     }
 
-    const storedMode = getStoredManagerMode()
-    if (storedMode) {
-      setActiveMode(storedMode)
-      return
+    if (pathname === "/manager/settings") {
+      const storedMode = getStoredManagerMode()
+      if (storedMode) {
+        setActiveMode(storedMode)
+        return
+      }
     }
 
-    setActiveMode(getModeFromPathname(pathname))
+    const mode = getModeFromPathname(pathname)
+    setStoredManagerMode(mode)
+    setActiveMode(mode)
   }, [pathname])
 
   const handleLogout = () => {
@@ -85,8 +92,7 @@ export function Topbar({ title, description }: TopbarProps) {
 
           <div className="flex flex-wrap items-center gap-2">
             {modeConfig.topbarLinks.map((item) => {
-              const isActive =
-                pathname === item.href || (item.href !== "/manager" && pathname.startsWith(item.href))
+              const isActive = activeTopbarHref === item.href
 
               return (
                 <Link

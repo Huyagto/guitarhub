@@ -2,15 +2,29 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import type { Order } from "@/lib/manager-types"
+import type { Order, OrderStatus } from "@/lib/manager-types"
 import { cn } from "@/lib/utils"
 
-const statusStyles = {
-  pending: "bg-warning/10 text-warning border-warning/20",
-  processing: "bg-chart-2/10 text-chart-2 border-chart-2/20",
-  shipped: "bg-primary/10 text-primary border-primary/20",
+const statusStyles: Record<OrderStatus, string> = {
+  awaiting_payment: "bg-warning/10 text-warning border-warning/20",
+  pending_confirmation: "bg-warning/10 text-warning border-warning/20",
+  confirmed: "bg-chart-2/10 text-chart-2 border-chart-2/20",
+  preparing: "bg-chart-2/10 text-chart-2 border-chart-2/20",
+  ready_to_ship: "bg-primary/10 text-primary border-primary/20",
+  shipping: "bg-primary/10 text-primary border-primary/20",
   delivered: "bg-success/10 text-success border-success/20",
   cancelled: "bg-destructive/10 text-destructive border-destructive/20",
+}
+
+const statusLabels: Record<OrderStatus, string> = {
+  awaiting_payment: "Chờ thanh toán",
+  pending_confirmation: "Chờ xác nhận",
+  confirmed: "Đã xác nhận",
+  preparing: "Đang chuẩn bị",
+  ready_to_ship: "Sẵn sàng giao",
+  shipping: "Đang giao",
+  delivered: "Đã giao",
+  cancelled: "Đã hủy",
 }
 
 interface RecentOrdersProps {
@@ -36,20 +50,15 @@ export function RecentOrders({ orders }: RecentOrdersProps) {
                 </p>
                 <p className="text-sm text-muted-foreground">{order.customer}</p>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center justify-end gap-3">
                 <Badge
                   variant="outline"
                   className={cn("capitalize", statusStyles[order.status])}
                 >
-                  {order.status === "pending"
-                    ? "Chờ xử lý"
-                    : order.status === "processing"
-                    ? "Đang xử lý"
-                    : order.status === "shipped"
-                    ? "Đang giao"
-                    : order.status === "delivered"
-                    ? "Đã giao"
-                    : "Đã hủy"}
+                  {statusLabels[order.status]}
+                </Badge>
+                <Badge variant="outline">
+                  {order.source === "store" ? "Tại cửa hàng" : "Online"}
                 </Badge>
                 <p className="text-sm font-medium text-foreground">
                   ${order.total.toLocaleString()}

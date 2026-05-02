@@ -1,6 +1,13 @@
 import { apiRequest } from "@/lib/api"
 import { getStaffAccessToken } from "@/lib/auth"
-import type { Product } from "@/lib/pos-data"
+import type { PaymentMethod, Product } from "@/lib/pos-data"
+
+function staffRequest<T>(path: string, init: RequestInit = {}) {
+  const token = getStaffAccessToken()
+  const headers = new Headers(init.headers)
+  if (token) headers.set("Authorization", `Bearer ${token}`)
+  return apiRequest<T>(path, { ...init, headers })
+}
 
 interface StaffCategoryResponse {
   id: string
@@ -33,9 +40,7 @@ interface PosCatalog {
 
 export async function getPosCatalog() {
   const token = getStaffAccessToken()
-  const headers: Record<string, string> = token
-    ? { Authorization: `Bearer ${token}` }
-    : {}
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
 
   const [categoriesResponse, productsResponse] = await Promise.all([
     apiRequest<StaffCategoryResponse[]>("/api/staff/categories", { headers }),
@@ -71,4 +76,44 @@ export async function getPosCatalog() {
       products,
     } satisfies PosCatalog,
   }
+}
+
+export interface PosOrderItem {
+  productId: string
+  quantity: number
+}
+
+export interface CreatePosOrderPayload {
+  customerName?: string
+  customerPhone?: string
+  note?: string
+  paymentMethod: PaymentMethod
+  items: PosOrderItem[]
+  totals: { discountAmount: number }
+}
+
+export interface PosOrderResult {
+  id: string
+  orderNumber: string
+}
+
+export async function createPosOrder(payload: CreatePosOrderPayload) {
+  return staffRequest<PosOrderResult>("/api/staff/orders", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export interface VoucherValidateResult {
+  code: string
+  type: string
+  value: number
+  discountAmount: number
+}
+
+export async function validatePosVoucher(code: string, subtotal: number) {
+  return staffRequest<VoucherValidateResult>("/api/staff/pos/vouchers/validate", {
+    method: "POST",
+    body: JSON.stringify({ code, subtotal }),
+  })
 }

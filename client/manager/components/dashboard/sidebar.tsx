@@ -4,10 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
-import {
-  ArrowRight,
-  Music2,
-} from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { getStoredManagerUser } from "@/lib/auth"
 import {
   getHomeModeFromPathname,
@@ -22,10 +19,13 @@ export function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
   const [userName, setUserName] = useState("Quản lý")
-  const [activeMode, setActiveMode] = useState<ManagerMode>(() => getStoredManagerMode() || getModeFromPathname(pathname))
+  const [activeMode, setActiveMode] = useState<ManagerMode>(() => getModeFromPathname(pathname))
   const modeConfig = managerModeConfigs[activeMode]
   const modeOptions: ManagerMode[] = ["staff", "customer", "reports"]
   const ModeIcon = modeConfig.icon
+  const activeNavigationHref = modeConfig.navigation
+    .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href
 
   useEffect(() => {
     const user = getStoredManagerUser()
@@ -42,25 +42,29 @@ export function Sidebar() {
       return
     }
 
-    const storedMode = getStoredManagerMode()
-    if (storedMode) {
-      setActiveMode(storedMode)
-      return
+    if (pathname === "/manager/settings") {
+      const storedMode = getStoredManagerMode()
+      if (storedMode) {
+        setActiveMode(storedMode)
+        return
+      }
     }
 
-    setActiveMode(getModeFromPathname(pathname))
+    const mode = getModeFromPathname(pathname)
+    setStoredManagerMode(mode)
+    setActiveMode(mode)
   }, [pathname])
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col bg-sidebar border-r border-sidebar-border">
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-          <Music2 className="h-5 w-5 text-primary-foreground" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 via-teal-500 to-sky-700 text-sm font-black text-white shadow-sm">
+          GH
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-semibold text-sidebar-foreground">Guitar Store</span>
-          <span className="text-xs text-muted-foreground">Cổng quản trị</span>
+          <span className="text-sm font-semibold text-sidebar-foreground">GuitarHub</span>
+          <span className="text-xs text-muted-foreground">Manager</span>
         </div>
       </div>
 
@@ -108,8 +112,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {modeConfig.navigation.map((item) => {
-          const isActive = pathname === item.href || 
-            (item.href !== "/manager" && pathname.startsWith(item.href))
+          const isActive = activeNavigationHref === item.href
           
           return (
             <Link

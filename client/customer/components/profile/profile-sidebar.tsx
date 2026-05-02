@@ -1,36 +1,47 @@
 "use client"
 
-import Link from "next/link"
 import Image from "next/image"
-import { useEffect, useState } from "react"
+import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { User, Package, MapPin, Lock, LogOut } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Lock, LogOut, MapPin, Package, User } from "lucide-react"
+import {
+  AUTH_SESSION_CHANGED_EVENT,
+  clearAuthSession,
+  getStoredUser,
+  type AuthUser,
+} from "@/lib/auth"
 import { cn } from "@/lib/utils"
-import { clearAuthSession, getStoredUser, type AuthUser } from "@/lib/auth"
-
-const navigation = [
-  { name: "Thông tin cá nhân", href: "/profile", icon: User },
-  { name: "Lịch sử đơn hàng", href: "/profile/orders", icon: Package },
-  { name: "Địa chỉ đã lưu", href: "/profile/addresses", icon: MapPin },
-  { name: "Đổi mật khẩu", href: "/profile/password", icon: Lock },
-]
 
 export function ProfileSidebar() {
   const pathname = usePathname()
   const [user, setUser] = useState<AuthUser | null>(null)
 
   useEffect(() => {
-    setUser(getStoredUser())
+    const syncUser = () => setUser(getStoredUser())
+
+    syncUser()
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, syncUser)
+
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, syncUser)
+    }
   }, [])
+
+  const navigation = [
+    { name: "Thông tin cá nhân", href: "/profile", icon: User },
+    { name: "Lịch sử đơn hàng", href: "/profile/orders", icon: Package },
+    { name: "Địa chỉ đã lưu", href: "/profile/addresses", icon: MapPin },
+    ...(user?.hasPassword ? [{ name: "Đổi mật khẩu", href: "/profile/password", icon: Lock }] : []),
+  ]
 
   const displayName = user?.fullName || "Khách hàng"
   const displayEmail = user?.email || "Chưa có email"
   const displayAvatar = user?.avatar || ""
 
   return (
-    <aside className="w-full lg:w-64 flex-shrink-0">
+    <aside className="w-full flex-shrink-0 lg:w-64">
       <div className="sticky top-24">
-        {/* User info */}
         <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4">
           {displayAvatar ? (
             <Image
@@ -48,18 +59,16 @@ export function ProfileSidebar() {
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-foreground truncate">
-              {displayName}
-            </p>
-            <p className="text-sm text-muted-foreground truncate">{displayEmail}</p>
+            <p className="truncate font-semibold text-foreground">{displayName}</p>
+            <p className="truncate text-sm text-muted-foreground">{displayEmail}</p>
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="mt-4 rounded-xl border border-border bg-card">
           <ul className="divide-y divide-border">
             {navigation.map((item) => {
               const isActive = pathname === item.href
+
               return (
                 <li key={item.name}>
                   <Link

@@ -6,6 +6,7 @@ module.exports = {
     logoutCustomer: require('./logout-customer.service'),
     refreshCustomerToken: require('./refresh-customer-token.service'),
     getCustomerProfile: require('./get-customer-profile.service'),
+    updateCustomerProfile: require('./update-customer-profile.service'),
     updateCustomerDefaultShippingAddress: require('./update-customer-default-shipping-address.service'),
     changeCustomerPassword: require('./change-customer-password.service'),
     forgotCustomerPassword: require('./forgot-customer-password.service'),

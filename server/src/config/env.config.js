@@ -5,7 +5,11 @@ module.exports = {
     customerAppUrl: process.env.CUSTOMER_APP_URL || 'http://127.0.0.1:3001',
     clientOrigins: process.env.CLIENT_ORIGINS
         ? process.env.CLIENT_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
-        : ['http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'],
+        : [
+            'http://127.0.0.1:3001',
+            'http://127.0.0.1:3002',
+            'http://127.0.0.1:3003',
+        ],
 
     jwtSecret: process.env.JWT_SECRET,
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
@@ -27,7 +31,7 @@ module.exports = {
     // Google OAuth Login
     googleClientId: process.env.CLIENT_ID,
     googleClientSecret: process.env.CLIENT_SECRET,
-    googleLoginUri: process.env.GOOGLE_LOGIN_URI,
+    googleLoginUri: process.env.GOOGLE_LOGIN_URI || `${process.env.APP_BASE_URL || `http://127.0.0.1:${process.env.PORT || 3000}`}/api/auth/google/callback`,
 
     cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
     cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,

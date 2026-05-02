@@ -12,6 +12,8 @@ interface OrderPanelProps {
   customerInfo: CustomerInfo
   discountCode: string
   discountAmount: number
+  discountError?: string
+  isApplyingDiscount?: boolean
   onUpdateQuantity: (productId: string, delta: number) => void
   onRemoveItem: (productId: string) => void
   onClearCart: () => void
@@ -26,6 +28,8 @@ export function OrderPanel({
   customerInfo,
   discountCode,
   discountAmount,
+  discountError,
+  isApplyingDiscount,
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
@@ -206,9 +210,10 @@ export function OrderPanel({
             variant="outline"
             size="sm"
             onClick={onApplyDiscount}
+            disabled={isApplyingDiscount}
             className="shrink-0"
           >
-            Áp dụng
+            {isApplyingDiscount ? '...' : 'Áp dụng'}
           </Button>
         </div>
         {discountAmount > 0 && (
@@ -216,6 +221,9 @@ export function OrderPanel({
             Đã áp dụng giảm giá: -{formatCurrency(discountAmount)}
           </p>
         )}
+        {discountError ? (
+          <p className="mt-2 text-xs text-destructive">{discountError}</p>
+        ) : null}
       </div>
 
       {/* Summary */}

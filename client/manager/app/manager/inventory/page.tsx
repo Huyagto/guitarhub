@@ -8,13 +8,14 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import type { InventoryItem } from "@/lib/manager-types"
+import type { Branch, InventoryItem } from "@/lib/manager-types"
 import { AlertTriangle, Loader2, MoreHorizontal, Package2, PackageCheck, PackageX, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getErrorMessage } from "@/lib/api"
-import { getManagerInventory, restockManagerInventory } from "@/lib/manager-data-api"
+import { getManagerBranches, getManagerInventoryByBranch, restockManagerInventory } from "@/lib/manager-data-api"
 
 const statusStyles = {
   "in-stock": "bg-success/10 text-success border-success/20",
@@ -24,6 +25,8 @@ const statusStyles = {
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [branches, setBranches] = useState<Branch[]>([])
+  const [branchFilter, setBranchFilter] = useState("all")
   const [restockDialog, setRestockDialog] = useState<{ open: boolean; item: InventoryItem | null }>({ open: false, item: null })
   const [restockQuantity, setRestockQuantity] = useState("")
   const [isLoading, setIsLoading] = useState(true)
@@ -32,8 +35,12 @@ export default function InventoryPage() {
   useEffect(() => {
     const loadInventory = async () => {
       try {
-        const response = await getManagerInventory()
-        setInventory(response.metadata)
+        const [inventoryResponse, branchesResponse] = await Promise.all([
+          getManagerInventoryByBranch(branchFilter),
+          getManagerBranches(),
+        ])
+        setInventory(inventoryResponse.metadata)
+        setBranches(branchesResponse.metadata)
       } catch (loadError) {
         setError(getErrorMessage(loadError, "Không thể tải tồn kho"))
       } finally {
@@ -42,11 +49,12 @@ export default function InventoryPage() {
     }
 
     void loadInventory()
-  }, [])
+  }, [branchFilter])
 
   const inStockCount = inventory.filter((item) => item.status === "in-stock").length
   const lowStockCount = inventory.filter((item) => item.status === "low-stock").length
   const outOfStockCount = inventory.filter((item) => item.status === "out-of-stock").length
+  const totalStock = inventory.reduce((sum, item) => sum + item.currentStock, 0)
 
   const handleRestock = async () => {
     if (!restockDialog.item || !restockQuantity) return
@@ -78,6 +86,7 @@ export default function InventoryPage() {
       ),
     },
     { key: "currentStock" as const, header: "Tồn kho hiện tại", render: (item: InventoryItem) => <span className={cn("font-medium", item.status === "out-of-stock" ? "text-destructive" : item.status === "low-stock" ? "text-warning" : "text-foreground")}>{item.currentStock}</span> },
+    { key: "branchName" as const, header: "Chi nhánh", render: (item: InventoryItem) => <span className="text-muted-foreground">{item.branchName || "Chưa gán"}</span> },
     { key: "minStock" as const, header: "Tồn kho tối thiểu", render: (item: InventoryItem) => <span className="text-muted-foreground">{item.minStock}</span> },
     { key: "maxStock" as const, header: "Tồn kho tối đa", render: (item: InventoryItem) => <span className="text-muted-foreground">{item.maxStock}</span> },
     {
@@ -93,6 +102,24 @@ export default function InventoryPage() {
       <Topbar title="Kho hàng" description="Theo dõi và quản lý số lượng tồn kho" />
       <main className="p-6 space-y-6">
         {error ? <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">{error}</div> : null}
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">Tổng tồn kho</p>
+            <p className="text-2xl font-bold text-foreground">{totalStock.toLocaleString()} sản phẩm</p>
+          </div>
+          <Select value={branchFilter} onValueChange={setBranchFilter}>
+            <SelectTrigger className="w-full md:w-72">
+              <SelectValue placeholder="Lọc theo chi nhánh" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả chi nhánh</SelectItem>
+              {branches.map((branch) => (
+                <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="bg-card border-border"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Còn hàng</CardTitle><PackageCheck className="h-5 w-5 text-success" /></CardHeader><CardContent><p className="text-2xl font-bold text-success">{inStockCount}</p><p className="text-xs text-muted-foreground">sản phẩm đang có sẵn</p></CardContent></Card>
           <Card className="bg-card border-border"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Sắp hết hàng</CardTitle><AlertTriangle className="h-5 w-5 text-warning" /></CardHeader><CardContent><p className="text-2xl font-bold text-warning">{lowStockCount}</p><p className="text-xs text-muted-foreground">cần bổ sung sớm</p></CardContent></Card>

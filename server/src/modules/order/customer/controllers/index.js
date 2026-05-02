@@ -1,4 +1,3 @@
-﻿'use strict';
+'use strict';
 
-module.exports = {};
-
+module.exports = require('./order-customer.controller');

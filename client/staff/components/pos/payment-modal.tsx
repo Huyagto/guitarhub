@@ -27,6 +27,8 @@ interface PaymentModalProps {
   items: OrderItem[]
   total: number
   discountAmount: number
+  isCreatingOrder?: boolean
+  orderError?: string
   onConfirmPayment: (method: PaymentMethod) => void
 }
 
@@ -44,6 +46,8 @@ export function PaymentModal({
   items,
   total,
   discountAmount,
+  isCreatingOrder,
+  orderError,
   onConfirmPayment,
 }: PaymentModalProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('cash')
@@ -179,14 +183,20 @@ export function PaymentModal({
             </div>
           )}
 
+          {orderError ? (
+            <p className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {orderError}
+            </p>
+          ) : null}
+
           {/* Confirm Button */}
           <Button
             className="h-12 w-full text-base"
             size="lg"
-            disabled={!canConfirm}
+            disabled={!canConfirm || isCreatingOrder}
             onClick={handleConfirm}
           >
-            Xác nhận thanh toán
+            {isCreatingOrder ? 'Đang xử lý...' : 'Xác nhận thanh toán'}
           </Button>
         </div>
       </DialogContent>

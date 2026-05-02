@@ -54,21 +54,10 @@ const deleteProduct = async (req, res, next) => {
     }
 };
 
-const uploadProductImage = async (req, res, next) => {
-    try {
-        validateRequest(req);
-        const metadata = await productManagerService.uploadManagerProductImage(req.body);
-        return new OK({ message: 'Tai anh san pham thanh cong', metadata }).send(res);
-    } catch (error) {
-        return next(error);
-    }
-};
-
 module.exports = {
     getProducts,
     getProductById,
     createProduct,
     updateProduct,
     deleteProduct,
-    uploadProductImage,
 };

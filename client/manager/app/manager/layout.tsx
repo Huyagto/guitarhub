@@ -20,7 +20,7 @@ export default function ManagerLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const [activeMode, setActiveMode] = useState<ManagerMode>(() => getStoredManagerMode() || getModeFromPathname(pathname))
+  const [activeMode, setActiveMode] = useState<ManagerMode>(() => getModeFromPathname(pathname))
   const modeConfig = managerModeConfigs[activeMode]
 
   useEffect(() => {
@@ -31,13 +31,17 @@ export default function ManagerLayout({
       return
     }
 
-    const storedMode = getStoredManagerMode()
-    if (storedMode) {
-      setActiveMode(storedMode)
-      return
+    if (pathname === "/manager/settings") {
+      const storedMode = getStoredManagerMode()
+      if (storedMode) {
+        setActiveMode(storedMode)
+        return
+      }
     }
 
-    setActiveMode(getModeFromPathname(pathname))
+    const mode = getModeFromPathname(pathname)
+    setStoredManagerMode(mode)
+    setActiveMode(mode)
   }, [pathname])
 
   return (
