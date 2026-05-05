@@ -21,6 +21,7 @@ const normalizeToken = (authHeader) => {
 };
 
 const getUserRoom = (userId) => `customer:${userId}`;
+const getStaffBranchRoom = (branchId) => `staff:orders:branch:${branchId}`;
 
 const initSocketServer = (httpServer) => {
     ioInstance = new Server(httpServer, {
@@ -56,7 +57,11 @@ const initSocketServer = (httpServer) => {
         const user = socket.data.user;
 
         if (user?.role === 'STAFF') {
-            socket.join(STAFF_ROOM);
+            if (user.branchId) {
+                socket.join(getStaffBranchRoom(user.branchId));
+            } else {
+                socket.join(STAFF_ROOM);
+            }
         }
 
         if (user?.role === 'CUSTOMER' && user?.id) {
@@ -72,7 +77,12 @@ const getSocketServer = () => ioInstance;
 const emitOrderCreated = (order) => {
     if (!ioInstance) return;
 
-    ioInstance.to(STAFF_ROOM).emit('order:created', order);
+    const branchId = order.branch?.id || order.branchId;
+    if (branchId) {
+        ioInstance.to(getStaffBranchRoom(branchId)).emit('order:created', order);
+    } else {
+        ioInstance.to(STAFF_ROOM).emit('order:created', order);
+    }
 
     if (order.customerId) {
         ioInstance.to(getUserRoom(order.customerId)).emit('order:created', order);
@@ -82,7 +92,12 @@ const emitOrderCreated = (order) => {
 const emitOrderUpdated = (order) => {
     if (!ioInstance) return;
 
-    ioInstance.to(STAFF_ROOM).emit('order:updated', order);
+    const branchId = order.branch?.id || order.branchId;
+    if (branchId) {
+        ioInstance.to(getStaffBranchRoom(branchId)).emit('order:updated', order);
+    } else {
+        ioInstance.to(STAFF_ROOM).emit('order:updated', order);
+    }
 
     if (order.customerId) {
         ioInstance.to(getUserRoom(order.customerId)).emit('order:updated', order);
@@ -91,6 +106,7 @@ const emitOrderUpdated = (order) => {
 
 module.exports = {
     STAFF_ROOM,
+    getStaffBranchRoom,
     getUserRoom,
     initSocketServer,
     getSocketServer,

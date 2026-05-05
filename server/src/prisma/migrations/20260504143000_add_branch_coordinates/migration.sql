@@ -1,0 +1,2 @@
+ALTER TABLE "branches" ADD COLUMN "latitude" DOUBLE PRECISION;
+ALTER TABLE "branches" ADD COLUMN "longitude" DOUBLE PRECISION;

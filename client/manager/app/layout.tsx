@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'GuitarHub Manager - Trang Quản Trị',
-  description: 'Trang quản trị để quản lý kho hàng, đơn hàng và khách hàng của Guitar Store',
+  title: 'GuitarHub Manager - Trang quản trị',
+  description: 'Trang quản trị để quản lý chi nhánh, kho hàng, đơn hàng và khách hàng của GuitarHub',
   generator: 'v0.app',
   icons: {
     icon: '/icon.svg',

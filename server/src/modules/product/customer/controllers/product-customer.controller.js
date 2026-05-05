@@ -44,7 +44,10 @@ const getProductBySlug = async (req, res, next) => {
 
 const getAvailableBranches = async (req, res, next) => {
     try {
-        const metadata = await productCustomerService.getAvailableBranches(req.query.productIds);
+        const metadata = await productCustomerService.getAvailableBranches(req.query.productIds, {
+            lat: req.query.lat,
+            lon: req.query.lon,
+        });
         return new OK({ message: 'Lay chi nhanh con hang thanh cong', metadata }).send(res);
     } catch (error) {
         return next(error);

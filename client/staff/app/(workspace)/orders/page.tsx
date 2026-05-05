@@ -5,6 +5,7 @@ import { BellRing, CheckCircle2, Clock3, Loader2, PackageCheck, Truck, XCircle }
 import { getErrorMessage } from "@/lib/api"
 import { getStaffOrders, updateStaffOrderStatus } from "@/lib/order-api"
 import { getStaffSocket } from "@/lib/socket"
+import { getStoredStaffUser } from "@/lib/auth"
 import type { StaffOrder, StaffOrderStatus } from "@/lib/order-types"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +15,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 const STAFF_ORDERS_CACHE_KEY = "staff_orders_cache"
+
+function getStaffOrdersCacheKey() {
+  const branchId = getStoredStaffUser()?.branchId
+  return branchId ? `${STAFF_ORDERS_CACHE_KEY}:${branchId}` : STAFF_ORDERS_CACHE_KEY
+}
+
+function isOrderForCurrentBranch(order: StaffOrder) {
+  const branchId = getStoredStaffUser()?.branchId
+  if (!branchId) return false
+  return Boolean(order.customerId) && order.branch?.id === String(branchId)
+}
 
 const statusStyles: Record<StaffOrderStatus, string> = {
   pending_confirmation: "bg-amber-500/10 text-amber-700 border-amber-500/20",
@@ -79,14 +91,14 @@ export default function StaffOrdersPage() {
   useEffect(() => {
     const loadOrders = async () => {
       if (typeof window !== "undefined") {
-        const cachedOrders = window.sessionStorage.getItem(STAFF_ORDERS_CACHE_KEY)
+        const cachedOrders = window.sessionStorage.getItem(getStaffOrdersCacheKey())
         if (cachedOrders) {
           try {
             const parsed = JSON.parse(cachedOrders) as StaffOrder[]
-            setOrders(parsed)
+            setOrders(parsed.filter(isOrderForCurrentBranch))
             setIsLoading(false)
           } catch {
-            window.sessionStorage.removeItem(STAFF_ORDERS_CACHE_KEY)
+            window.sessionStorage.removeItem(getStaffOrdersCacheKey())
           }
         }
       }
@@ -95,7 +107,7 @@ export default function StaffOrdersPage() {
         const response = await getStaffOrders()
         setOrders(response.metadata)
         if (typeof window !== "undefined") {
-          window.sessionStorage.setItem(STAFF_ORDERS_CACHE_KEY, JSON.stringify(response.metadata))
+          window.sessionStorage.setItem(getStaffOrdersCacheKey(), JSON.stringify(response.metadata))
         }
       } catch (loadError) {
         setError(getErrorMessage(loadError, "Không thể tải danh sách đơn hàng"))
@@ -114,21 +126,25 @@ export default function StaffOrdersPage() {
     }
 
     const handleOrderCreated = (order: StaffOrder) => {
+      if (!isOrderForCurrentBranch(order)) return
       setOrders((prev) => {
         const nextOrders = [order, ...prev.filter((item) => item.id !== order.id)]
         if (typeof window !== "undefined") {
-          window.sessionStorage.setItem(STAFF_ORDERS_CACHE_KEY, JSON.stringify(nextOrders))
+          window.sessionStorage.setItem(getStaffOrdersCacheKey(), JSON.stringify(nextOrders))
         }
         return nextOrders
       })
-      setLiveMessage(`Đơn mới ${order.orderNumber} vừa được gửi sang staff.`)
+      if (order.status === "pending_confirmation") {
+        setLiveMessage(`Đơn mới ${order.orderNumber} vừa được gửi sang staff.`)
+      }
     }
 
     const handleOrderUpdated = (order: StaffOrder) => {
+      if (!isOrderForCurrentBranch(order)) return
       setOrders((prev) => {
         const nextOrders = prev.map((item) => (item.id === order.id ? order : item))
         if (typeof window !== "undefined") {
-          window.sessionStorage.setItem(STAFF_ORDERS_CACHE_KEY, JSON.stringify(nextOrders))
+          window.sessionStorage.setItem(getStaffOrdersCacheKey(), JSON.stringify(nextOrders))
         }
         return nextOrders
       })
@@ -159,7 +175,7 @@ export default function StaffOrdersPage() {
       setOrders((prev) => {
         const nextOrders = prev.map((order) => (order.id === orderId ? response.metadata : order))
         if (typeof window !== "undefined") {
-          window.sessionStorage.setItem(STAFF_ORDERS_CACHE_KEY, JSON.stringify(nextOrders))
+          window.sessionStorage.setItem(getStaffOrdersCacheKey(), JSON.stringify(nextOrders))
         }
         return nextOrders
       })

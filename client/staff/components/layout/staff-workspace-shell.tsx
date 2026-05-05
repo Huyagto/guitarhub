@@ -2,24 +2,36 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { BellRing, Clock, LogOut } from "lucide-react"
+import { BellRing, Clock, LogOut, MapPin } from "lucide-react"
 import { AuthGuard } from "@/components/auth/auth-guard"
 import { Button } from "@/components/ui/button"
 import { StaffWorkspaceNav } from "@/components/layout/staff-workspace-nav"
 import { clearStaffSession, getStoredStaffUser } from "@/lib/auth"
-import { getStaffSocket } from "@/lib/socket"
+import { getStaffOrders } from "@/lib/order-api"
+import { disconnectStaffSocket, getStaffSocket } from "@/lib/socket"
 import type { StaffOrder } from "@/lib/order-types"
 
 const STAFF_ORDERS_CACHE_KEY = "staff_orders_cache"
 
+function getStaffOrdersCacheKey() {
+  const branchId = getStoredStaffUser()?.branchId
+  return branchId ? `${STAFF_ORDERS_CACHE_KEY}:${branchId}` : STAFF_ORDERS_CACHE_KEY
+}
+
+function isOrderForCurrentBranch(order: StaffOrder) {
+  const branchId = getStoredStaffUser()?.branchId
+  if (!branchId) return false
+  return Boolean(order.customerId) && order.branch?.id === String(branchId)
+}
+
 function readCachedOrders() {
   if (typeof window === "undefined") return [] as StaffOrder[]
 
-  const cachedOrders = window.sessionStorage.getItem(STAFF_ORDERS_CACHE_KEY)
+  const cachedOrders = window.sessionStorage.getItem(getStaffOrdersCacheKey())
   if (!cachedOrders) return []
 
   try {
-    return JSON.parse(cachedOrders) as StaffOrder[]
+    return (JSON.parse(cachedOrders) as StaffOrder[]).filter(isOrderForCurrentBranch)
   } catch {
     return []
   }
@@ -27,7 +39,10 @@ function readCachedOrders() {
 
 function writeCachedOrders(orders: StaffOrder[]) {
   if (typeof window === "undefined") return
-  window.sessionStorage.setItem(STAFF_ORDERS_CACHE_KEY, JSON.stringify(orders))
+  window.sessionStorage.setItem(
+    getStaffOrdersCacheKey(),
+    JSON.stringify(orders.filter(isOrderForCurrentBranch))
+  )
 }
 
 export function StaffWorkspaceShell({ children }: { children: React.ReactNode }) {
@@ -35,6 +50,7 @@ export function StaffWorkspaceShell({ children }: { children: React.ReactNode })
   const router = useRouter()
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
   const [staffName, setStaffName] = useState("Nhân viên")
+  const [branchLabel, setBranchLabel] = useState("")
   const [onlineOrdersCount, setOnlineOrdersCount] = useState(0)
   const [liveNotice, setLiveNotice] = useState("")
 
@@ -49,19 +65,35 @@ export function StaffWorkspaceShell({ children }: { children: React.ReactNode })
     if (user?.fullName) {
       setStaffName(user.fullName)
     }
+    if (user?.branch?.code) {
+      setBranchLabel(`${user.branch.code} - ${user.branch.name}`)
+    } else {
+      setBranchLabel("Chưa gán chi nhánh")
+    }
   }, [])
 
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    const syncWaitingCount = () => {
+    const syncWaitingCount = async () => {
       const parsed = readCachedOrders()
       setOnlineOrdersCount(parsed.filter((order) => order.status === "pending_confirmation").length)
+
+      try {
+        const response = await getStaffOrders()
+        writeCachedOrders(response.metadata)
+        setOnlineOrdersCount(
+          response.metadata.filter((order) => order.status === "pending_confirmation").length
+        )
+      } catch {
+        // Keep the cached count when the staff API is temporarily unavailable.
+      }
     }
 
-    syncWaitingCount()
-    window.addEventListener("focus", syncWaitingCount)
-    return () => window.removeEventListener("focus", syncWaitingCount)
+    void syncWaitingCount()
+    const handleFocus = () => void syncWaitingCount()
+    window.addEventListener("focus", handleFocus)
+    return () => window.removeEventListener("focus", handleFocus)
   }, [pathname])
 
   useEffect(() => {
@@ -87,14 +119,18 @@ export function StaffWorkspaceShell({ children }: { children: React.ReactNode })
     }
 
     const handleOrderCreated = (order: StaffOrder) => {
+      if (!isOrderForCurrentBranch(order)) return
       const currentOrders = readCachedOrders()
       const nextOrders = [order, ...currentOrders.filter((item) => item.id !== order.id)]
       writeCachedOrders(nextOrders)
       syncWaitingCountFromOrders(nextOrders)
-      setLiveNotice(`Đơn online mới ${order.orderNumber} đang chờ staff xác nhận.`)
+      if (order.status === "pending_confirmation") {
+        setLiveNotice(`Đơn online mới ${order.orderNumber} đang chờ staff xác nhận.`)
+      }
     }
 
     const handleOrderUpdated = (order: StaffOrder) => {
+      if (!isOrderForCurrentBranch(order)) return
       const currentOrders = readCachedOrders()
       const nextOrders = currentOrders.map((item) =>
         item.id === order.id ? order : item
@@ -130,6 +166,7 @@ export function StaffWorkspaceShell({ children }: { children: React.ReactNode })
   )
 
   const handleLogout = () => {
+    disconnectStaffSocket()
     clearStaffSession()
     router.push("/login")
   }
@@ -151,6 +188,10 @@ export function StaffWorkspaceShell({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-4">
+            <div className="hidden items-center gap-2 rounded-full border border-border bg-secondary/60 px-3 py-1.5 text-sm font-medium text-foreground lg:flex">
+              <MapPin className="h-4 w-4 text-primary" />
+              {branchLabel}
+            </div>
             <StaffWorkspaceNav active={activeSection} ordersBadgeCount={onlineOrdersCount} />
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-4 w-4" />

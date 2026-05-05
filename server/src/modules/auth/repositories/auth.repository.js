@@ -5,11 +5,25 @@ const findByEmail = async (email) => {
 };
 
 const findById = async (id) => {
-    return prisma.user.findUnique({ where: { id } });
+    return prisma.user.findUnique({
+        where: { id },
+        include: {
+            branch: {
+                select: { id: true, name: true, code: true, address: true },
+            },
+        },
+    });
 };
 
 const findByStaffCode = async (staffCode) => {
-    return prisma.user.findUnique({ where: { staffCode } });
+    return prisma.user.findUnique({
+        where: { staffCode },
+        include: {
+            branch: {
+                select: { id: true, name: true, code: true, address: true },
+            },
+        },
+    });
 };
 
 const findByGoogleId = async (googleId) => {

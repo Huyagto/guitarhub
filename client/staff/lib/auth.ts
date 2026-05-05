@@ -7,6 +7,14 @@ export interface StaffAuthUser {
   email: string
   fullName: string
   role: "STAFF"
+  staffCode?: string
+  branchId?: number | null
+  branch?: {
+    id: number
+    name: string
+    code: string
+    address?: string | null
+  } | null
   isActive?: boolean
 }
 

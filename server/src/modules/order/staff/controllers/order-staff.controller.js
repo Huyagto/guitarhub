@@ -6,7 +6,7 @@ const orderStaffService = require('../services/order-staff.service');
 
 const getOrders = async (req, res, next) => {
     try {
-        const metadata = await orderStaffService.getOrders();
+        const metadata = await orderStaffService.getOrders(req.user.id);
         return new OK({ message: 'Lấy danh sách đơn hàng thành công', metadata }).send(res);
     } catch (error) {
         return next(error);

@@ -57,6 +57,11 @@ export interface CustomerOrder {
     province?: string
     note?: string
   }
+  branch: {
+    id: string
+    name: string
+    code: string
+  } | null
   handledByStaff: {
     id: string
     fullName: string

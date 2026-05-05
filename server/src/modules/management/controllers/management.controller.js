@@ -31,6 +31,26 @@ const getBranches = async (req, res, next) => {
     }
 };
 
+const createBranch = async (req, res, next) => {
+    try {
+        validateRequest(req);
+        const metadata = await managementService.createBranch(req.body);
+        return new Created({ message: 'Tạo chi nhánh thành công', metadata }).send(res);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const updateBranch = async (req, res, next) => {
+    try {
+        validateRequest(req);
+        const metadata = await managementService.updateBranch(req.params.id, req.body);
+        return new OK({ message: 'Cập nhật chi nhánh thành công', metadata }).send(res);
+    } catch (error) {
+        next(error);
+    }
+};
+
 const createCollectionItem = (collection) => (req, res, next) => {
     try {
         const metadata = managementService.createCollectionItem(collection, req.body);
@@ -198,6 +218,8 @@ module.exports = {
     getCollection,
     getCustomers,
     getBranches,
+    createBranch,
+    updateBranch,
     createCollectionItem,
     updateCollectionItem,
     deleteCollectionItem,

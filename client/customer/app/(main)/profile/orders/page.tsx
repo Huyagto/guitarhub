@@ -11,6 +11,7 @@ import {
   PackageSearch,
   RefreshCw,
   Truck,
+  Store,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -207,7 +208,7 @@ export default function ProfileOrdersPage() {
                 </CardHeader>
 
                 <CardContent className="space-y-5 pt-6">
-                  <div className="grid gap-4 md:grid-cols-3">
+                  <div className="grid gap-4 md:grid-cols-4">
                     <div className="rounded-xl bg-muted/40 p-4">
                       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                         <Package className="h-4 w-4 text-primary" />
@@ -239,6 +240,21 @@ export default function ProfileOrdersPage() {
                       <p className="mt-1 text-sm text-muted-foreground">
                         {shippingAddress || "Chưa có địa chỉ giao hàng"}
                       </p>
+                    </div>
+
+                    <div className="rounded-xl bg-muted/40 p-4">
+                      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <Store className="h-4 w-4 text-primary" />
+                        Chi nhánh
+                      </div>
+                      {order.branch ? (
+                        <>
+                          <p className="mt-2 text-sm font-semibold text-foreground">{order.branch.name}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">{order.branch.code}</p>
+                        </>
+                      ) : (
+                        <p className="mt-2 text-sm text-muted-foreground">Chưa xác định</p>
+                      )}
                     </div>
                   </div>
 

@@ -23,7 +23,7 @@ export interface StaffOrderLineItem {
 
 export interface StaffOrder {
   id: string
-  customerId: string
+  customerId: string | null
   orderNumber: string
   customer: string
   email: string
@@ -35,6 +35,12 @@ export interface StaffOrder {
   status: StaffOrderStatus
   paymentStatus: StaffPaymentStatus
   paymentMethod: StaffPaymentMethod
+  source?: "online" | "store"
+  branch?: {
+    id: string
+    name: string
+    code: string
+  } | null
   note: string
   createdAt: string
   updatedAt: string

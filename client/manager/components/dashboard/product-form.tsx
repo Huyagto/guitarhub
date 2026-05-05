@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Loader2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import type { Brand, Category, Product } from "@/lib/manager-types"
+import type { Branch, Brand, Category, Product } from "@/lib/manager-types"
 import { uploadManagerProductImage } from "@/lib/manager-data-api"
 
 interface ProductFormProps {
@@ -30,6 +30,7 @@ interface ProductFormProps {
   product?: Product | null
   categories: Category[]
   brands: Brand[]
+  branches: Branch[]
   onSubmit: (data: Record<string, unknown>) => void
 }
 
@@ -42,7 +43,16 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "")
 }
 
-export function ProductForm({ open, onOpenChange, product, categories, brands, onSubmit }: ProductFormProps) {
+function getInitialBranchStocks(product: Product | null | undefined, branches: Branch[]) {
+  const stockByBranch = new Map(product?.branchInventory?.map((item) => [item.branchId, String(item.stock)]) || [])
+
+  return branches.reduce<Record<string, string>>((acc, branch) => {
+    acc[branch.id] = stockByBranch.get(branch.id) || "0"
+    return acc
+  }, {})
+}
+
+export function ProductForm({ open, onOpenChange, product, categories, brands, branches, onSubmit }: ProductFormProps) {
   const [formData, setFormData] = useState({
     name: product?.name || "",
     slug: product?.slug || "",
@@ -50,10 +60,10 @@ export function ProductForm({ open, onOpenChange, product, categories, brands, o
     categoryId: product?.categoryId || "",
     brandId: product?.brandId || "",
     price: product?.price?.toString() || "",
-    stock: product?.stock?.toString() || "",
     image: product?.image || "",
     status: product?.status || "active",
   })
+  const [branchStocks, setBranchStocks] = useState<Record<string, string>>({})
   const [isUploading, setIsUploading] = useState(false)
 
   useEffect(() => {
@@ -64,11 +74,16 @@ export function ProductForm({ open, onOpenChange, product, categories, brands, o
       categoryId: product?.categoryId || "",
       brandId: product?.brandId || "",
       price: product?.price?.toString() || "",
-      stock: product?.stock?.toString() || "",
       image: product?.image || "",
       status: product?.status || "active",
     })
-  }, [product, open])
+    setBranchStocks(getInitialBranchStocks(product, branches))
+  }, [product, open, branches])
+
+  const totalStock = useMemo(
+    () => Object.values(branchStocks).reduce((sum, value) => sum + Number(value || 0), 0),
+    [branchStocks]
+  )
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -90,8 +105,8 @@ export function ProductForm({ open, onOpenChange, product, categories, brands, o
     reader.readAsDataURL(file)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault()
 
     onSubmit({
       name: formData.name,
@@ -100,9 +115,12 @@ export function ProductForm({ open, onOpenChange, product, categories, brands, o
       categoryId: Number(formData.categoryId),
       brandId: Number(formData.brandId),
       price: Number(formData.price),
-      stock: Number(formData.stock),
       image: formData.image,
       status: formData.status.toUpperCase(),
+      branchInventory: branches.map((branch) => ({
+        branchId: Number(branch.id),
+        stock: Number(branchStocks[branch.id] || 0),
+      })),
     })
 
     onOpenChange(false)
@@ -110,11 +128,11 @@ export function ProductForm({ open, onOpenChange, product, categories, brands, o
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px]">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[720px]">
         <DialogHeader>
           <DialogTitle>{product ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}</DialogTitle>
           <DialogDescription>
-            {product ? "Cập nhật thông tin sản phẩm bên dưới." : "Điền thông tin để thêm sản phẩm mới."}
+            {product ? "Cập nhật thông tin sản phẩm và tồn kho từng chi nhánh." : "Điền thông tin để thêm sản phẩm mới vào từng chi nhánh."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -124,24 +142,25 @@ export function ProductForm({ open, onOpenChange, product, categories, brands, o
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) =>
+                onChange={(event) =>
                   setFormData((prev) => ({
                     ...prev,
-                    name: e.target.value,
-                    slug: product ? prev.slug : slugify(e.target.value),
+                    name: event.target.value,
+                    slug: product ? prev.slug : slugify(event.target.value),
                   }))
                 }
                 placeholder="Nhập tên sản phẩm"
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="slug">Slug</Label>
                 <Input
                   id="slug"
                   value={formData.slug}
-                  onChange={(e) => setFormData({ ...formData, slug: slugify(e.target.value) })}
+                  onChange={(event) => setFormData({ ...formData, slug: slugify(event.target.value) })}
                   placeholder="slug-san-pham"
                   required
                 />
@@ -151,15 +170,16 @@ export function ProductForm({ open, onOpenChange, product, categories, brands, o
                 <Input
                   id="sku"
                   value={formData.sku}
-                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, sku: event.target.value })}
                   placeholder="Nhập SKU"
                   required
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="category">Danh mục</Label>
+                <Label>Danh mục</Label>
                 <Select
                   value={String(formData.categoryId)}
                   onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
@@ -177,7 +197,7 @@ export function ProductForm({ open, onOpenChange, product, categories, brands, o
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="brand">Thương hiệu</Label>
+                <Label>Thương hiệu</Label>
                 <Select
                   value={String(formData.brandId)}
                   onValueChange={(value) => setFormData({ ...formData, brandId: value })}
@@ -195,7 +215,8 @@ export function ProductForm({ open, onOpenChange, product, categories, brands, o
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="price">Giá (VND)</Label>
                 <Input
@@ -203,26 +224,57 @@ export function ProductForm({ open, onOpenChange, product, categories, brands, o
                   type="number"
                   min="0"
                   value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, price: event.target.value })}
                   placeholder="0"
                   required
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="stock">Tồn kho</Label>
-                <Input
-                  id="stock"
-                  type="number"
-                  min="0"
-                  value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                  placeholder="0"
-                  required
-                />
+                <Label>Tổng tồn kho</Label>
+                <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm font-medium">
+                  {totalStock}
+                </div>
               </div>
             </div>
+
+            <div className="grid gap-3 rounded-lg border border-border p-4">
+              <div>
+                <Label>Tồn kho theo chi nhánh</Label>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Sản phẩm chỉ bán online/POS tại chi nhánh có tồn kho lớn hơn 0.
+                </p>
+              </div>
+              {branches.length === 0 ? (
+                <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+                  Chưa có chi nhánh để gán tồn kho.
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {branches.map((branch) => (
+                    <div key={branch.id} className="grid gap-2">
+                      <Label htmlFor={`branch-${branch.id}`}>
+                        {branch.name} <span className="text-muted-foreground">({branch.code})</span>
+                      </Label>
+                      <Input
+                        id={`branch-${branch.id}`}
+                        type="number"
+                        min="0"
+                        value={branchStocks[branch.id] || "0"}
+                        onChange={(event) =>
+                          setBranchStocks((prev) => ({
+                            ...prev,
+                            [branch.id]: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="grid gap-2">
-              <Label htmlFor="status">Trạng thái</Label>
+              <Label>Trạng thái</Label>
               <Select
                 value={formData.status}
                 onValueChange={(value) => setFormData({ ...formData, status: value as Product["status"] })}
@@ -237,6 +289,7 @@ export function ProductForm({ open, onOpenChange, product, categories, brands, o
                 </SelectContent>
               </Select>
             </div>
+
             <div className="grid gap-3">
               <Label htmlFor="image">Ảnh sản phẩm</Label>
               <Input id="image" type="file" accept="image/*" onChange={handleFileChange} />
@@ -262,7 +315,7 @@ export function ProductForm({ open, onOpenChange, product, categories, brands, o
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Hủy
             </Button>
-            <Button type="submit" disabled={isUploading}>
+            <Button type="submit" disabled={isUploading || branches.length === 0}>
               {product ? "Cập nhật" : "Thêm"} sản phẩm
             </Button>
           </DialogFooter>

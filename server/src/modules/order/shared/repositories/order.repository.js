@@ -32,9 +32,11 @@ const toDbStatus = (status) => ORDER_STATUS_TO_DB[status] || status;
 const toDbPaymentStatus = (status) => ORDER_PAYMENT_STATUS_TO_DB[status] || status;
 const toDbPaymentMethod = (method) => ORDER_PAYMENT_METHOD_TO_DB[method] || method;
 
-const findMany = async ({ customerId, excludeStatuses = [] } = {}) => prisma.order.findMany({
+const findMany = async ({ customerId, branchId, onlineOnly = false, excludeStatuses = [] } = {}) => prisma.order.findMany({
     where: {
+        ...(onlineOnly ? { customerId: { not: null } } : {}),
         ...(customerId ? { customerId: Number(customerId) } : {}),
+        ...(branchId ? { branchId: Number(branchId) } : {}),
         ...(excludeStatuses.length
             ? {
                 status: {
@@ -204,15 +206,21 @@ const createPos = async ({ staffId, branchId, customerName, customerPhone, note,
     });
 };
 
-const updateStatus = async (id, status, handledByStaffId) => prisma.order.update({
-    where: { id: Number(id) },
-    data: {
-        status: toDbStatus(status),
-        handledByStaffId: handledByStaffId ? Number(handledByStaffId) : undefined,
-        handledAt: handledByStaffId ? new Date() : undefined,
-    },
-    include: ORDER_INCLUDE,
-});
+const updateStatus = async (id, status, handledByStaffId) => {
+    const existing = await prisma.order.findUnique({ where: { id: Number(id) }, select: { paymentMethod: true } });
+    const autoPay = status === 'shipping' && existing?.paymentMethod === 'COD';
+
+    return prisma.order.update({
+        where: { id: Number(id) },
+        data: {
+            status: toDbStatus(status),
+            paymentStatus: autoPay ? 'PAID' : undefined,
+            handledByStaffId: handledByStaffId ? Number(handledByStaffId) : undefined,
+            handledAt: handledByStaffId ? new Date() : undefined,
+        },
+        include: ORDER_INCLUDE,
+    });
+};
 
 const updatePayment = async (orderNumber, { paymentStatus, status }) => prisma.$transaction(async (tx) => {
     const currentOrder = await tx.order.findUnique({

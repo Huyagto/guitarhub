@@ -5,7 +5,6 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Trash2, ShoppingBag, ArrowRight, Minus, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav"
 import { EmptyState } from "@/components/ui/empty-state"
 import { useCart } from "@/lib/cart-context"
@@ -15,11 +14,6 @@ import { getDefaultShippingAddress } from "@/lib/shipping-address"
 export default function CartPage() {
   const router = useRouter()
   const { items, removeItem, updateQuantity, subtotal, isLoading } = useCart()
-
-  const freeShippingThreshold = 5000000
-  const defaultShippingFee = 30000
-  const shippingFee = subtotal >= freeShippingThreshold ? 0 : defaultShippingFee
-  const total = subtotal + shippingFee
 
   const handleCheckout = () => {
     const defaultAddress = getDefaultShippingAddress()
@@ -189,37 +183,27 @@ export default function CartPage() {
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Phí giao hàng</span>
-                  <span className="font-medium text-foreground">
-                    {shippingFee === 0 ? (
-                      <span className="text-green-600">Miễn phí</span>
-                    ) : (
-                      formatPrice(shippingFee)
-                    )}
+                  <span className="font-medium">
+                    <span className="text-muted-foreground">Tính theo chi nhánh</span>
                   </span>
                 </div>
-                {subtotal < freeShippingThreshold && (
-                  <p className="text-xs text-muted-foreground">
-                    Mua thêm {formatPrice(freeShippingThreshold - subtotal)} để được miễn phí giao hàng
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  Phí giao hàng sẽ được tính theo khoảng cách từ địa chỉ của bạn tới chi nhánh được chọn ở bước thanh toán.
+                </p>
               </div>
 
               <div className="mt-6 border-t border-border pt-4">
                 <div className="flex items-center justify-between">
                   <span className="text-base font-semibold text-foreground">
-                    Tổng cộng
+                    Tạm tính
                   </span>
                   <span className="text-xl font-bold text-foreground">
-                    {formatPrice(total)}
+                    {formatPrice(subtotal)}
                   </span>
                 </div>
-              </div>
-
-              <div className="mt-6">
-                <div className="flex gap-2">
-                  <Input placeholder="Nhập mã giảm giá" className="flex-1" />
-                  <Button variant="outline">Áp dụng</Button>
-                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Tổng cuối cùng sẽ hiển thị sau khi chọn chi nhánh và áp mã giảm giá ở trang thanh toán.
+                </p>
               </div>
 
               <Button className="mt-6 w-full" size="lg" onClick={handleCheckout}>

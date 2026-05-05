@@ -38,6 +38,15 @@ interface ReportsSummary extends DashboardOverview {
     products: number
   }>
   topProducts: Array<{ name: string; sales: number; revenue: number }>
+  branchBreakdown: Array<{
+    branchId: string
+    branchName: string
+    branchCode: string
+    orders: number
+    revenue: number
+    onlineOrders: number
+    storeOrders: number
+  }>
 }
 
 function getManagerHeaders() {
@@ -206,6 +215,20 @@ export async function getManagerStaffs() {
 
 export async function getManagerBranches() {
   return managerRequest<Branch[]>("/api/manager/branches")
+}
+
+export async function createManagerBranch(payload: Partial<Branch>) {
+  return managerRequest<Branch>("/api/manager/branches", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateManagerBranch(id: string, payload: Partial<Branch>) {
+  return managerRequest<Branch>(`/api/manager/branches/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  })
 }
 
 export async function createManagerStaff(payload: { fullName: string; email: string; phone?: string; password: string }) {

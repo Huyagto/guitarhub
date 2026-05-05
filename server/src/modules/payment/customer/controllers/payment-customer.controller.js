@@ -49,8 +49,18 @@ const callbackZalopay = async (req, res, next) => {
     }
 };
 
+const previewCheckout = async (req, res, next) => {
+    try {
+        const metadata = await paymentCustomerService.previewCheckout(req.user.id, req.body);
+        return new OK({ message: 'Xem truoc thanh toan thanh cong', metadata }).send(res);
+    } catch (error) {
+        return next(error);
+    }
+};
+
 module.exports = {
     createCheckout,
+    previewCheckout,
     callbackVnpay,
     callbackMomo,
     callbackZalopay,

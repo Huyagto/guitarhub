@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
-import Link from "next/link"
-import { Camera, Loader2, MapPin } from "lucide-react"
+import { Camera, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -186,25 +185,7 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div className="sm:col-span-2 rounded-xl border border-border bg-muted/30 p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-accent">
-                    <MapPin className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">Quản lý địa chỉ giao hàng</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Thêm, chỉnh sửa và chọn địa chỉ mặc định của bạn trong mục Địa chỉ đã lưu.
-                    </p>
-                  </div>
-                </div>
 
-                <Button asChild variant="outline">
-                  <Link href="/profile/addresses">Mở sổ địa chỉ</Link>
-                </Button>
-              </div>
-            </div>
           </div>
 
           <div className="mt-6 flex justify-end">

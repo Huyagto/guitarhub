@@ -3,6 +3,12 @@
 const { body, param, query } = require('express-validator');
 const { PRODUCT_STATUSES } = require('../../shared/constants/product.constants');
 
+const branchInventoryValidator = [
+    body('branchInventory').optional().isArray().withMessage('Tồn kho chi nhánh không hợp lệ'),
+    body('branchInventory.*.branchId').optional().isInt({ min: 1 }).withMessage('Chi nhánh không hợp lệ'),
+    body('branchInventory.*.stock').optional().isInt({ min: 0 }).withMessage('Tồn kho chi nhánh không hợp lệ'),
+];
+
 const getProductsValidator = [
     query('search').optional().isString(),
     query('category').optional().isString(),
@@ -16,7 +22,7 @@ const createProductValidator = [
     body('categoryId').isInt({ min: 1 }).withMessage('Danh mục không hợp lệ'),
     body('brandId').isInt({ min: 1 }).withMessage('Thương hiệu không hợp lệ'),
     body('price').isFloat({ min: 0 }).withMessage('Giá sản phẩm không hợp lệ'),
-    body('stock').optional().isInt({ min: 0 }).withMessage('Tồn kho không hợp lệ'),
+    ...branchInventoryValidator,
     body('image').optional({ values: 'falsy' }).isString(),
     body('shortDescription').optional({ values: 'falsy' }).isString(),
     body('description').optional({ values: 'falsy' }).isString(),
@@ -33,7 +39,7 @@ const updateProductValidator = [
     body('categoryId').optional().isInt({ min: 1 }).withMessage('Danh mục không hợp lệ'),
     body('brandId').optional().isInt({ min: 1 }).withMessage('Thương hiệu không hợp lệ'),
     body('price').optional().isFloat({ min: 0 }).withMessage('Giá sản phẩm không hợp lệ'),
-    body('stock').optional().isInt({ min: 0 }).withMessage('Tồn kho không hợp lệ'),
+    ...branchInventoryValidator,
     body('image').optional({ values: 'falsy' }).isString(),
     body('shortDescription').optional({ values: 'falsy' }).isString(),
     body('description').optional({ values: 'falsy' }).isString(),

@@ -58,14 +58,14 @@ const createProduct = async (payload) => {
         categoryId: payload.categoryId,
         brandId: payload.brandId,
         price: payload.price,
-        stock: payload.stock || 0,
+        stock: 0,
         image: payload.image || null,
         shortDescription: payload.shortDescription || null,
         description: payload.description || null,
         status: payload.status || 'DRAFT',
         isBestSeller: payload.isBestSeller || false,
         isNewArrival: payload.isNewArrival || false,
-    });
+    }, payload.branchInventory);
 
     return toManagerProductResponseDto(product);
 };
@@ -95,14 +95,13 @@ const updateProduct = async (id, payload) => {
         ...(payload.categoryId !== undefined ? { categoryId: payload.categoryId } : {}),
         ...(payload.brandId !== undefined ? { brandId: payload.brandId } : {}),
         ...(payload.price !== undefined ? { price: payload.price } : {}),
-        ...(payload.stock !== undefined ? { stock: payload.stock } : {}),
         ...(payload.image !== undefined ? { image: payload.image || null } : {}),
         ...(payload.shortDescription !== undefined ? { shortDescription: payload.shortDescription || null } : {}),
         ...(payload.description !== undefined ? { description: payload.description || null } : {}),
         ...(payload.status !== undefined ? { status: payload.status } : {}),
         ...(payload.isBestSeller !== undefined ? { isBestSeller: payload.isBestSeller } : {}),
         ...(payload.isNewArrival !== undefined ? { isNewArrival: payload.isNewArrival } : {}),
-    });
+    }, payload.branchInventory);
 
     return toManagerProductResponseDto(product);
 };

@@ -7,13 +7,7 @@ import { getStaffAccessToken } from "@/lib/auth"
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const [hasAccessToken, setHasAccessToken] = useState<boolean | null>(() => {
-    if (typeof window === "undefined") {
-      return null
-    }
-
-    return Boolean(getStaffAccessToken())
-  })
+  const [hasAccessToken, setHasAccessToken] = useState<boolean | null>(null)
 
   useEffect(() => {
     const accessToken = getStaffAccessToken()

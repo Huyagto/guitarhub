@@ -38,6 +38,15 @@ export interface Product {
   brand: string
   price: number
   stock: number
+  branchInventory?: Array<{
+    id: string
+    branchId: string
+    branchName: string
+    branchCode: string
+    stock: number
+    minStock: number
+    maxStock: number
+  }>
   status: "active" | "draft" | "archived"
   image: string
   createdAt: string

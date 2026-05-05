@@ -9,7 +9,7 @@ import { getStoredManagerUser } from "@/lib/auth"
 import {
   getHomeModeFromPathname,
   getModeFromPathname,
-  getStoredManagerMode,
+  managerModeOrder,
   managerModeConfigs,
   setStoredManagerMode,
   type ManagerMode,
@@ -21,7 +21,7 @@ export function Sidebar() {
   const [userName, setUserName] = useState("Quản lý")
   const [activeMode, setActiveMode] = useState<ManagerMode>(() => getModeFromPathname(pathname))
   const modeConfig = managerModeConfigs[activeMode]
-  const modeOptions: ManagerMode[] = ["staff", "customer", "reports"]
+  const modeOptions: ManagerMode[] = managerModeOrder
   const ModeIcon = modeConfig.icon
   const activeNavigationHref = modeConfig.navigation
     .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
@@ -40,14 +40,6 @@ export function Sidebar() {
       setStoredManagerMode(homeMode)
       setActiveMode(homeMode)
       return
-    }
-
-    if (pathname === "/manager/settings") {
-      const storedMode = getStoredManagerMode()
-      if (storedMode) {
-        setActiveMode(storedMode)
-        return
-      }
     }
 
     const mode = getModeFromPathname(pathname)

@@ -21,7 +21,12 @@ const omitPassword = (user) => {
 };
 
 const createTokens = (user) => {
-    const payload = { id: user.id, email: user.email, role: user.role };
+    const payload = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        branchId: user.branchId || null,
+    };
     return {
         accessToken: generateAccessToken(payload),
         refreshToken: generateRefreshToken(payload),

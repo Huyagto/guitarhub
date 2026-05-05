@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -12,6 +12,9 @@ import {
   Wallet,
   Smartphone,
   Banknote,
+  MapPin,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,7 +26,7 @@ import { formatPrice } from "@/lib/format"
 import { getAccessToken, getStoredUser } from "@/lib/auth"
 import type { PaymentMethod } from "@/lib/types"
 import { getDefaultShippingAddress } from "@/lib/shipping-address"
-import { createCheckout, getAvailableCheckoutBranches, type AvailableBranch } from "@/lib/checkout-api"
+import { createCheckout, getAvailableCheckoutBranches, previewCheckout, type AvailableBranch, type CheckoutPreview } from "@/lib/checkout-api"
 
 const paymentMethods = [
   {
@@ -61,6 +64,12 @@ export default function CheckoutPage() {
   const [selectedBranchId, setSelectedBranchId] = useState("")
   const [isLoadingBranches, setIsLoadingBranches] = useState(true)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod")
+  const [voucherCode, setVoucherCode] = useState("")
+  const [voucherInput, setVoucherInput] = useState("")
+  const [voucherError, setVoucherError] = useState("")
+  const [preview, setPreview] = useState<CheckoutPreview | null>(null)
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false)
+  const [shippingInfoOpen, setShippingInfoOpen] = useState(false)
   const [shippingInfo, setShippingInfo] = useState({
     recipientName: "",
     phone: "",
@@ -73,10 +82,6 @@ export default function CheckoutPage() {
     lon: "",
   })
 
-  const freeShippingThreshold = 5000000
-  const defaultShippingFee = 30000
-  const shippingFee = subtotal >= freeShippingThreshold ? 0 : defaultShippingFee
-  const total = subtotal + shippingFee
   const mapEmbedUrl =
     shippingInfo.lat && shippingInfo.lon
       ? `https://www.openstreetmap.org/export/embed.html?bbox=${Number(shippingInfo.lon) - 0.002}%2C${Number(shippingInfo.lat) - 0.002}%2C${Number(shippingInfo.lon) + 0.002}%2C${Number(shippingInfo.lat) + 0.002}&layer=mapnik&marker=${shippingInfo.lat}%2C${shippingInfo.lon}`
@@ -113,10 +118,22 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const loadBranches = async () => {
+      setIsLoadingBranches(true)
       try {
-        const availableBranches = await getAvailableCheckoutBranches(items.map((item) => item.product.id))
+        const availableBranches = await getAvailableCheckoutBranches(
+          items.map((item) => item.product.id),
+          { lat: shippingInfo.lat, lon: shippingInfo.lon }
+        )
         setBranches(availableBranches)
-        setSelectedBranchId((current) => current || availableBranches[0]?.id || "")
+        const fulfillableBranches = availableBranches.filter((branch) =>
+          items.every((item) => {
+            const inventory = branch.inventory.find((entry) => entry.productId === item.product.id)
+            return Boolean(inventory && inventory.stock >= item.quantity)
+          })
+        )
+        setSelectedBranchId((current) =>
+          fulfillableBranches.some((branch) => branch.id === current) ? current : fulfillableBranches[0]?.id || ""
+        )
       } catch {
         setBranches([])
       } finally {
@@ -127,7 +144,50 @@ export default function CheckoutPage() {
     if (items.length) {
       void loadBranches()
     }
-  }, [items])
+  }, [items, shippingInfo.lat, shippingInfo.lon])
+
+  const fetchPreview = useCallback(async (branchId: string, code: string) => {
+    if (!branchId || !shippingInfo.lat || !shippingInfo.lon) return
+    setIsLoadingPreview(true)
+    setVoucherError("")
+    try {
+      const result = await previewCheckout({
+        branchId,
+        voucherCode: code || undefined,
+        shippingInfo: { lat: shippingInfo.lat, lon: shippingInfo.lon },
+      })
+      setPreview(result)
+    } catch (err) {
+      if (code) {
+        setVoucherError(err instanceof Error ? err.message : "Mã giảm giá không hợp lệ")
+        // retry without voucher to show correct shipping fee
+        try {
+          const result = await previewCheckout({
+            branchId,
+            shippingInfo: { lat: shippingInfo.lat, lon: shippingInfo.lon },
+          })
+          setPreview(result)
+        } catch {
+          setPreview(null)
+        }
+      } else {
+        setPreview(null)
+      }
+    } finally {
+      setIsLoadingPreview(false)
+    }
+  }, [shippingInfo.lat, shippingInfo.lon])
+
+  useEffect(() => {
+    if (selectedBranchId) {
+      void fetchPreview(selectedBranchId, voucherCode)
+    }
+  }, [selectedBranchId, voucherCode, fetchPreview])
+
+  const handleApplyVoucher = () => {
+    setVoucherCode(voucherInput)
+    void fetchPreview(selectedBranchId, voucherInput)
+  }
 
   const branchCanFulfillCart = (branch: AvailableBranch) =>
     items.every((item) => {
@@ -156,9 +216,14 @@ export default function CheckoutPage() {
         throw new Error("Vui lòng chọn chi nhánh còn đủ hàng")
       }
 
+      if (!shippingInfo.lat || !shippingInfo.lon) {
+        throw new Error("Vui lòng cập nhật địa chỉ giao hàng có định vị trước khi thanh toán")
+      }
+
       const checkout = await createCheckout({
         paymentMethod,
         branchId: selectedBranchId,
+        voucherCode: voucherCode.trim() || undefined,
         shippingInfo: {
           recipientName: shippingInfo.recipientName,
           phone: shippingInfo.phone,
@@ -188,6 +253,12 @@ export default function CheckoutPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const formatDistance = (distanceKm: number | null) => {
+    if (distanceKm === null) return "Chưa có khoảng cách"
+    if (distanceKm < 1) return `${Math.round(distanceKm * 1000)} m`
+    return `${distanceKm.toFixed(1)} km`
   }
 
   if (items.length === 0) {
@@ -240,40 +311,42 @@ export default function CheckoutPage() {
         <form onSubmit={handleSubmit}>
           <div className="mt-8 grid gap-8 lg:grid-cols-3">
             <div className="space-y-8 lg:col-span-2">
-              <div className="rounded-xl border border-border p-6">
-                <h2 className="text-lg font-semibold text-foreground">
-                  Chi nhánh xử lý đơn
-                </h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Chọn chi nhánh còn đủ các mặt hàng trong giỏ. Đơn online sẽ trừ tồn kho tại chi nhánh này.
-                </p>
+              <div className="rounded-xl border border-border p-4">
+                <h2 className="text-sm font-semibold text-foreground">Chi nhánh xử lý đơn</h2>
 
                 {isLoadingBranches ? (
-                  <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Đang kiểm tra tồn kho chi nhánh...
+                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Đang kiểm tra tồn kho...
                   </div>
                 ) : branches.length === 0 ? (
-                  <p className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-                    Hiện chưa có chi nhánh nào đủ hàng cho toàn bộ giỏ hàng.
+                  <p className="mt-2 text-xs text-destructive">
+                    Hiện chưa có chi nhánh nào đủ hàng.
                   </p>
                 ) : (
-                  <RadioGroup value={selectedBranchId} onValueChange={setSelectedBranchId} className="mt-5 grid gap-3">
+                  <RadioGroup value={selectedBranchId} onValueChange={setSelectedBranchId} className="mt-2 flex gap-2 overflow-x-auto pb-1">
                     {branches.map((branch) => {
                       const canFulfill = branchCanFulfillCart(branch)
+                      const isSelected = selectedBranchId === branch.id
 
                       return (
-                        <div key={branch.id}>
+                        <div key={branch.id} className="shrink-0">
                           <RadioGroupItem value={branch.id} id={`branch-${branch.id}`} disabled={!canFulfill} className="peer sr-only" />
                           <Label
                             htmlFor={`branch-${branch.id}`}
-                            className="flex cursor-pointer flex-col gap-2 rounded-lg border-2 border-border p-4 transition-colors hover:bg-muted peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-data-[state=checked]:border-accent peer-data-[state=checked]:bg-accent/5"
+                            className={`flex w-44 cursor-pointer flex-col gap-1 rounded-lg border-2 p-3 transition-colors hover:bg-muted peer-disabled:cursor-not-allowed peer-disabled:opacity-40 ${isSelected ? "border-accent bg-accent/5" : "border-border"}`}
                           >
-                            <span className="font-medium text-foreground">{branch.name}</span>
-                            <span className="text-sm text-muted-foreground">{branch.address || branch.code}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {canFulfill ? "Đủ hàng cho giỏ hiện tại" : "Không đủ số lượng trong giỏ"}
-                            </span>
+                            <span className="truncate text-xs font-semibold text-foreground">{branch.name}</span>
+                            <span className="line-clamp-2 text-[11px] leading-tight text-muted-foreground">{branch.address || branch.code}</span>
+                            <div className="mt-auto flex flex-col gap-0.5 pt-1">
+                              <span className="flex items-center gap-0.5 text-[11px] font-medium text-accent">
+                                <MapPin className="h-2.5 w-2.5" />
+                                {formatDistance(branch.distanceKm)}
+                              </span>
+                              <span className={`text-[11px] font-medium ${canFulfill ? "text-green-600" : "text-destructive"}`}>
+                                {canFulfill ? "Đủ hàng" : "Thiếu hàng"}
+                              </span>
+                            </div>
                           </Label>
                         </div>
                       )
@@ -282,71 +355,87 @@ export default function CheckoutPage() {
                 )}
               </div>
 
-              <div className="rounded-xl border border-border p-6">
-                <h2 className="text-lg font-semibold text-foreground">
-                  Thông tin nhận hàng
-                </h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Điền người nhận và số điện thoại tại đây. Địa chỉ được lấy từ hồ sơ của bạn.
-                </p>
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="recipientName">Người nhận</Label>
-                    <Input
-                      id="recipientName"
-                      value={shippingInfo.recipientName}
-                      onChange={(e) =>
-                        setShippingInfo((prev) => ({
-                          ...prev,
-                          recipientName: e.target.value,
-                        }))
-                      }
-                      className="mt-2"
-                      placeholder="Họ và tên người nhận"
-                    />
+              <div className="rounded-xl border border-border p-4">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between"
+                  onClick={() => setShippingInfoOpen((o) => !o)}
+                >
+                  <div className="text-left">
+                    <h2 className="text-sm font-semibold text-foreground">Thông tin nhận hàng</h2>
+                    {!shippingInfoOpen && shippingInfo.recipientName && (
+                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+                        {shippingInfo.recipientName} · {shippingInfo.phone} · {shippingInfo.displayName || shippingInfo.detailAddress}
+                      </p>
+                    )}
                   </div>
+                  {shippingInfoOpen ? (
+                    <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  )}
+                </button>
 
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="shippingPhone">Số điện thoại</Label>
-                    <Input
-                      id="shippingPhone"
-                      type="tel"
-                      value={shippingInfo.phone}
-                      onChange={(e) =>
-                        setShippingInfo((prev) => ({
-                          ...prev,
-                          phone: e.target.value,
-                        }))
-                      }
-                      className="mt-2"
-                      placeholder="Số điện thoại liên hệ"
-                    />
-                  </div>
-                </div>
+                {shippingInfoOpen && (
+                  <>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <div className="sm:col-span-2">
+                        <Label htmlFor="recipientName">Người nhận</Label>
+                        <Input
+                          id="recipientName"
+                          value={shippingInfo.recipientName}
+                          onChange={(e) =>
+                            setShippingInfo((prev) => ({
+                              ...prev,
+                              recipientName: e.target.value,
+                            }))
+                          }
+                          className="mt-2"
+                          placeholder="Họ và tên người nhận"
+                        />
+                      </div>
 
-                <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4">
-                  <p className="font-medium text-foreground">Địa chỉ từ hồ sơ</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {shippingInfo.displayName || shippingInfo.detailAddress}
-                  </p>
+                      <div className="sm:col-span-2">
+                        <Label htmlFor="shippingPhone">Số điện thoại</Label>
+                        <Input
+                          id="shippingPhone"
+                          type="tel"
+                          value={shippingInfo.phone}
+                          onChange={(e) =>
+                            setShippingInfo((prev) => ({
+                              ...prev,
+                              phone: e.target.value,
+                            }))
+                          }
+                          className="mt-2"
+                          placeholder="Số điện thoại liên hệ"
+                        />
+                      </div>
+                    </div>
 
-                  <Button asChild variant="outline" className="mt-4">
-                    <Link href="/profile/addresses?from=checkout">Đổi địa chỉ trong hồ sơ</Link>
-                  </Button>
-                </div>
+                    <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+                      <p className="text-sm font-medium text-foreground">Địa chỉ từ hồ sơ</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {shippingInfo.displayName || shippingInfo.detailAddress}
+                      </p>
+                      <Button asChild variant="outline" size="sm" className="mt-3">
+                        <Link href="/profile/addresses?from=checkout">Đổi địa chỉ trong hồ sơ</Link>
+                      </Button>
+                    </div>
 
-                {mapEmbedUrl ? (
-                  <div className="mt-4 overflow-hidden rounded-xl border border-border">
-                    <iframe
-                      title="Bản đồ địa chỉ giao hàng"
-                      src={mapEmbedUrl}
-                      className="h-72 w-full border-0"
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                    />
-                  </div>
-                ) : null}
+                    {mapEmbedUrl ? (
+                      <div className="mt-3 overflow-hidden rounded-lg border border-border">
+                        <iframe
+                          title="Bản đồ địa chỉ giao hàng"
+                          src={mapEmbedUrl}
+                          className="h-48 w-full border-0"
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </div>
 
               <div className="rounded-xl border border-border p-6">
@@ -420,33 +509,90 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="mt-6 space-y-3 border-t border-border pt-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="voucherCode">Mã giảm giá</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="voucherCode"
+                        value={voucherInput}
+                        onChange={(e) => setVoucherInput(e.target.value.toUpperCase())}
+                        placeholder="Nhập mã nếu có"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            handleApplyVoucher()
+                          }
+                        }}
+                        disabled={!selectedBranchId}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={handleApplyVoucher}
+                        disabled={!selectedBranchId || isLoadingPreview}
+                      >
+                        Áp dụng
+                      </Button>
+                    </div>
+                    {voucherError ? (
+                      <p className="text-xs text-destructive">{voucherError}</p>
+                    ) : preview?.voucher ? (
+                      <p className="text-xs text-green-600">Mã {preview.voucher.code} đã được áp dụng</p>
+                    ) : !selectedBranchId ? (
+                      <p className="text-xs text-muted-foreground">Chọn chi nhánh trước để áp mã giảm giá.</p>
+                    ) : null}
+                  </div>
+
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Tạm tính</span>
-                    <span className="font-medium text-foreground">
-                      {formatPrice(subtotal)}
-                    </span>
+                    <span className="font-medium text-foreground">{formatPrice(subtotal)}</span>
                   </div>
+
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Phí giao hàng</span>
-                    <span className="font-medium text-foreground">
-                      {shippingFee === 0 ? (
-                        <span className="text-green-600">Miễn phí</span>
+                    {isLoadingPreview ? (
+                      <span className="text-muted-foreground">Đang tính...</span>
+                    ) : preview ? (
+                      preview.shippingFee === 0 ? (
+                        <span className="text-green-600 font-medium">Miễn phí</span>
                       ) : (
-                        formatPrice(shippingFee)
-                      )}
-                    </span>
+                        <span className="font-medium text-foreground">{formatPrice(preview.shippingFee)}</span>
+                      )
+                    ) : (
+                      <span className="text-muted-foreground">Chọn chi nhánh để tính</span>
+                    )}
                   </div>
+
+                  {preview && preview.distanceKm > 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Khoảng cách: {preview.distanceKm} km tới chi nhánh đã chọn
+                    </p>
+                  ) : null}
+
+                  {preview && preview.discountAmount > 0 ? (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Giảm giá</span>
+                      <span className="font-medium text-green-600">-{formatPrice(preview.discountAmount)}</span>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="mt-4 border-t border-border pt-4">
                   <div className="flex items-center justify-between">
                     <span className="text-base font-semibold text-foreground">
-                      Tổng cộng
+                      {preview ? "Tổng cộng" : "Tạm tính"}
                     </span>
                     <span className="text-xl font-bold text-foreground">
-                      {formatPrice(total)}
+                      {preview ? formatPrice(preview.total) : formatPrice(subtotal)}
                     </span>
                   </div>
+                  {!preview && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Chọn chi nhánh để xem tổng chính xác bao gồm phí giao hàng.
+                    </p>
+                  )}
                 </div>
 
                 {submitError ? (
@@ -465,7 +611,7 @@ export default function CheckoutPage() {
                       Đang xử lý...
                     </>
                   ) : (
-                    "Đặt hàng"
+                    "Tiến hành thanh toán"
                   )}
                 </Button>
 

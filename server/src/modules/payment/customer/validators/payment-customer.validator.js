@@ -19,6 +19,7 @@ const createCheckoutValidator = [
     body('shippingInfo.displayName').optional({ values: 'falsy' }).isString(),
     body('shippingInfo.lat').optional({ values: 'falsy' }).isString(),
     body('shippingInfo.lon').optional({ values: 'falsy' }).isString(),
+    body('voucherCode').optional({ values: 'falsy' }).trim().isLength({ min: 2, max: 40 }).withMessage('Ma giam gia khong hop le'),
 ];
 
 module.exports = {

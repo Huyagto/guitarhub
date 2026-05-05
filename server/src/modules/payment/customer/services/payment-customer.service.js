@@ -31,6 +31,7 @@ const { toOrderResponseDto } = require('../../../order/shared/dto/order.response
 const { emitOrderCreated, emitOrderUpdated } = require('../../../../realtime/socket.server');
 
 const buildOrderCode = () => `GH${Date.now()}`;
+const toNumber = (value) => Number(value || 0);
 
 const sortObject = (input) => Object.keys(input)
     .sort()
@@ -91,15 +92,119 @@ const getCheckoutCustomer = async (userId) => {
     return user;
 };
 
-const getCheckoutTotals = (cartDto) => {
+const calculateDistanceKm = ({ fromLat, fromLon, toLat, toLon }) => {
+    const coordinates = [fromLat, fromLon, toLat, toLon].map(Number);
+    if (coordinates.some((value) => !Number.isFinite(value))) {
+        throw new BadRequestError('Khong du thong tin toa do de tinh phi giao hang');
+    }
+
+    const [lat1, lon1, lat2, lon2] = coordinates;
+    const toRadians = (value) => value * Math.PI / 180;
+    const earthRadiusKm = 6371;
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2
+        + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) ** 2;
+
+    return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const calculateShippingFee = (subtotalAfterDiscount, distanceKm) => {
     const freeShippingThreshold = 5000000;
-    const defaultShippingFee = 30000;
-    const shippingFee = cartDto.subtotal >= freeShippingThreshold ? 0 : defaultShippingFee;
+    if (subtotalAfterDiscount >= freeShippingThreshold) return 0;
+
+    const baseFee = 18000;
+    const perKmFee = 5000;
+    return baseFee + Math.ceil(Math.max(distanceKm, 1)) * perKmFee;
+};
+
+const getCheckoutBranch = async (branchId) => {
+    const branch = await prisma.branch.findFirst({
+        where: {
+            id: Number(branchId),
+            status: 'ACTIVE',
+        },
+        select: {
+            id: true,
+            name: true,
+            code: true,
+            latitude: true,
+            longitude: true,
+        },
+    });
+
+    if (!branch) {
+        throw new BadRequestError('Chi nhanh da chon khong hop le');
+    }
+
+    return branch;
+};
+
+const getCheckoutVoucher = async (code, subtotal) => {
+    const normalizedCode = String(code || '').trim().toUpperCase();
+    if (!normalizedCode) {
+        return null;
+    }
+
+    const voucher = await prisma.voucher.findFirst({
+        where: {
+            code: normalizedCode,
+            status: 'ACTIVE',
+            expiresAt: { gt: new Date() },
+        },
+    });
+
+    if (!voucher) {
+        throw new BadRequestError('Ma giam gia khong hop le hoac da het han');
+    }
+
+    if (voucher.usageLimit > 0 && voucher.usedCount >= voucher.usageLimit) {
+        throw new BadRequestError('Ma giam gia da het luot su dung');
+    }
+
+    const minPurchase = toNumber(voucher.minPurchase);
+    if (subtotal < minPurchase) {
+        throw new BadRequestError(`Don hang toi thieu ${minPurchase.toLocaleString('vi-VN')}d de dung ma nay`);
+    }
+
+    const value = toNumber(voucher.value);
+    const discountAmount = String(voucher.type).toUpperCase() === 'PERCENTAGE'
+        ? Math.floor(subtotal * value / 100)
+        : Math.min(value, subtotal);
+
+    return {
+        id: voucher.id,
+        code: voucher.code,
+        discountAmount,
+    };
+};
+
+const markVoucherUsed = async (voucherId) => {
+    if (!voucherId) return;
+
+    await prisma.voucher.update({
+        where: { id: Number(voucherId) },
+        data: { usedCount: { increment: 1 } },
+    });
+};
+
+const getCheckoutTotals = ({ cartDto, branch, shippingInfo, voucher }) => {
+    const distanceKm = calculateDistanceKm({
+        fromLat: shippingInfo.lat,
+        fromLon: shippingInfo.lon,
+        toLat: branch.latitude,
+        toLon: branch.longitude,
+    });
+    const discountAmount = voucher?.discountAmount || 0;
+    const subtotalAfterDiscount = Math.max(0, cartDto.subtotal - discountAmount);
+    const shippingFee = calculateShippingFee(subtotalAfterDiscount, distanceKm);
 
     return {
         subtotal: cartDto.subtotal,
+        discountAmount,
         shippingFee,
-        total: cartDto.subtotal + shippingFee,
+        distanceKm,
+        total: subtotalAfterDiscount + shippingFee,
     };
 };
 
@@ -274,15 +379,31 @@ const createCheckout = async (userId, payload, req) => {
         getCartSnapshot(userId),
         getCheckoutCustomer(userId),
     ]);
-    const totals = getCheckoutTotals(cartDto);
+    const [branch, voucher] = await Promise.all([
+        getCheckoutBranch(payload.branchId),
+        getCheckoutVoucher(payload.voucherCode, cartDto.subtotal),
+    ]);
+    const totals = getCheckoutTotals({
+        cartDto,
+        branch,
+        shippingInfo: payload.shippingInfo,
+        voucher,
+    });
     const orderCode = buildOrderCode();
     const initialOrderStatus = payload.paymentMethod === 'cod' ? 'pending_confirmation' : 'awaiting_payment';
+    const shippingInfo = {
+        ...payload.shippingInfo,
+        branchDistanceKm: Number(totals.distanceKm.toFixed(2)),
+        shippingFee: totals.shippingFee,
+        voucherCode: voucher?.code || null,
+        discountAmount: totals.discountAmount,
+    };
 
     const order = await orderRepository.create({
         user: customer,
         orderNumber: orderCode,
         branchId: payload.branchId,
-        shippingInfo: payload.shippingInfo,
+        shippingInfo,
         paymentMethod: payload.paymentMethod,
         paymentStatus: 'pending',
         status: initialOrderStatus,
@@ -296,16 +417,19 @@ const createCheckout = async (userId, payload, req) => {
         userId,
         paymentMethod: payload.paymentMethod,
         branchId: payload.branchId,
-        shippingInfo: payload.shippingInfo,
+        shippingInfo,
         items: cartDto.items,
         subtotal: totals.subtotal,
+        discountAmount: totals.discountAmount,
         shippingFee: totals.shippingFee,
         total: totals.total,
+        voucherId: voucher?.id || null,
         status: payload.paymentMethod === 'cod' ? 'completed' : 'pending',
         createdAt: new Date().toISOString(),
     });
 
     if (payload.paymentMethod === 'cod') {
+        await markVoucherUsed(voucher?.id);
         emitOrderCreated(toOrderResponseDto(order));
         await clearUserCart(userId);
         return {
@@ -366,6 +490,7 @@ const handleVnpayCallback = async (query) => {
 
     const orderDto = toOrderResponseDto(updatedOrder);
     if (isSuccess) {
+        await markVoucherUsed(session.voucherId);
         emitOrderCreated(orderDto);
         await clearUserCart(session.userId);
     } else {
@@ -399,6 +524,7 @@ const handleMomoCallback = async (payload) => {
 
     const orderDto = toOrderResponseDto(updatedOrder);
     if (isSuccess) {
+        await markVoucherUsed(session.voucherId);
         emitOrderCreated(orderDto);
         await clearUserCart(session.userId);
     } else {
@@ -429,6 +555,7 @@ const handleZalopayCallback = async (payload) => {
             paymentStatus: 'paid',
             status: 'pending_confirmation',
         });
+        await markVoucherUsed(session.voucherId);
         emitOrderCreated(toOrderResponseDto(updatedOrder));
         await clearUserCart(session.userId);
     }
@@ -436,8 +563,25 @@ const handleZalopayCallback = async (payload) => {
     return { return_code: 1, return_message: 'success' };
 };
 
+const previewCheckout = async (userId, { branchId, voucherCode, shippingInfo }) => {
+    const cartDto = await getCartSnapshot(userId);
+    const branch = await getCheckoutBranch(branchId);
+    const voucher = voucherCode ? await getCheckoutVoucher(voucherCode, cartDto.subtotal) : null;
+    const totals = getCheckoutTotals({ cartDto, branch, shippingInfo, voucher });
+
+    return {
+        subtotal: totals.subtotal,
+        discountAmount: totals.discountAmount,
+        shippingFee: totals.shippingFee,
+        distanceKm: Number(totals.distanceKm.toFixed(1)),
+        total: totals.total,
+        voucher: voucher ? { code: voucher.code, discountAmount: voucher.discountAmount } : null,
+    };
+};
+
 module.exports = {
     createCheckout,
+    previewCheckout,
     handleVnpayCallback,
     handleMomoCallback,
     handleZalopayCallback,

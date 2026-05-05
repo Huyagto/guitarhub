@@ -5,6 +5,12 @@ const { database: prisma } = require('../../../../config');
 const productInclude = {
     category: true,
     brand: true,
+    branchInventory: {
+        include: {
+            branch: true,
+        },
+        orderBy: { branchId: 'asc' },
+    },
 };
 
 const buildWhere = ({ search, categorySlug, brandSlug, status }) => ({
@@ -57,10 +63,26 @@ const findBySlug = async (slug) => {
     });
 };
 
-const create = async (data) => {
+const normalizeBranchStocks = (branchInventory = []) => {
+    const stockByBranch = new Map();
+    branchInventory.forEach((item) => {
+        const branchId = Number(item.branchId);
+        if (Number.isInteger(branchId) && branchId > 0) {
+            stockByBranch.set(branchId, Math.max(0, Number(item.stock || 0)));
+        }
+    });
+    return stockByBranch;
+};
+
+const create = async (data, branchInventory = []) => {
     return prisma.$transaction(async (tx) => {
+        const stockByBranch = normalizeBranchStocks(branchInventory);
+        const initialStock = Array.from(stockByBranch.values()).reduce((sum, stock) => sum + stock, 0);
         const product = await tx.product.create({
-            data,
+            data: {
+                ...data,
+                stock: initialStock,
+            },
             include: productInclude,
         });
 
@@ -72,10 +94,10 @@ const create = async (data) => {
 
         if (branches.length) {
             await tx.branchInventory.createMany({
-                data: branches.map((branch, index) => ({
+                data: branches.map((branch) => ({
                     branchId: branch.id,
                     productId: product.id,
-                    stock: index === 0 ? Number(data.stock || 0) : 0,
+                    stock: stockByBranch.get(branch.id) || 0,
                     minStock: data.minStock || 5,
                     maxStock: data.maxStock || 20,
                 })),
@@ -83,15 +105,60 @@ const create = async (data) => {
             });
         }
 
-        return product;
+        return tx.product.findUnique({
+            where: { id: product.id },
+            include: productInclude,
+        });
     });
 };
 
-const update = async (id, data) => {
-    return prisma.product.update({
-        where: { id },
-        data,
-        include: productInclude,
+const update = async (id, data, branchInventory) => {
+    return prisma.$transaction(async (tx) => {
+        await tx.product.update({
+            where: { id },
+            data,
+        });
+
+        if (Array.isArray(branchInventory)) {
+            const stockByBranch = normalizeBranchStocks(branchInventory);
+
+            await Promise.all(Array.from(stockByBranch.entries()).map(([branchId, stock]) =>
+                tx.branchInventory.upsert({
+                    where: {
+                        branchId_productId: {
+                            branchId,
+                            productId: id,
+                        },
+                    },
+                    create: {
+                        branchId,
+                        productId: id,
+                        stock,
+                    },
+                    update: {
+                        stock,
+                    },
+                })
+            ));
+
+            const aggregate = await tx.branchInventory.aggregate({
+                where: { productId: id },
+                _sum: { stock: true },
+            });
+
+            await tx.product.update({
+                where: { id },
+                data: {
+                    stock: aggregate._sum.stock || 0,
+                    lastRestockedAt: new Date(),
+                },
+            });
+        }
+
+        return tx.product.findUnique({
+            where: { id },
+            include: productInclude,
+        });
     });
 };
 

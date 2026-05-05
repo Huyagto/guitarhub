@@ -8,15 +8,48 @@ const { toOrderResponseDto } = require('../../shared/dto/order.response.dto');
 const { emitOrderCreated } = require('../../../../realtime/socket.server');
 const { ORDER_PAYMENT_METHODS } = require('../../shared/constants');
 
-const getOrders = async () => {
+const getStaffBranchId = async (staffId) => {
+    const staff = await prisma.user.findUnique({
+        where: { id: Number(staffId) },
+        select: { branchId: true },
+    });
+
+    if (!staff?.branchId) {
+        throw new BadRequestError('Nhân viên chưa được gán chi nhánh');
+    }
+
+    return staff.branchId;
+};
+
+const getOrders = async (staffId) => {
+    const branchId = await getStaffBranchId(staffId);
     const orders = await orderRepository.findMany({
+        branchId,
+        onlineOnly: true,
         excludeStatuses: ['awaiting_payment'],
     });
 
     return orders.map(toOrderResponseDto);
 };
 
-const updateOrderStatus = async (id, status, staffId) => orderManagerService.updateOrderStatus(id, status, staffId);
+const updateOrderStatus = async (id, status, staffId) => {
+    const branchId = await getStaffBranchId(staffId);
+    const order = await orderRepository.findById(id);
+
+    if (!order) {
+        throw new NotFoundError('Không tìm thấy đơn hàng');
+    }
+
+    if (Number(order.branchId) !== Number(branchId)) {
+        throw new BadRequestError('Nhân viên không thể xử lý đơn của chi nhánh khác');
+    }
+
+    if (!order.customerId) {
+        throw new BadRequestError('Nhân viên chỉ xử lý đơn online trong khu vực đơn hàng');
+    }
+
+    return orderManagerService.updateOrderStatus(id, status, staffId);
+};
 
 const createPosOrder = async (staffId, { customerName, customerPhone, note, paymentMethod, items, totals }) => {
     if (!items || !items.length) {
@@ -28,14 +61,7 @@ const createPosOrder = async (staffId, { customerName, customerPhone, note, paym
         throw new BadRequestError('Phương thức thanh toán không hợp lệ');
     }
 
-    const staff = await prisma.user.findUnique({
-        where: { id: Number(staffId) },
-        select: { branchId: true },
-    });
-
-    if (!staff?.branchId) {
-        throw new BadRequestError('Nhan vien chua duoc gan chi nhanh');
-    }
+    const branchId = await getStaffBranchId(staffId);
 
     const productIds = items.map((item) => Number(item.productId));
     const products = await prisma.product.findMany({
@@ -66,7 +92,7 @@ const createPosOrder = async (staffId, { customerName, customerPhone, note, paym
 
     const order = await orderRepository.createPos({
         staffId,
-        branchId: staff.branchId,
+        branchId,
         customerName,
         customerPhone,
         note,

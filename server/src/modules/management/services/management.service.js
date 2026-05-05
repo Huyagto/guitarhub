@@ -193,7 +193,7 @@ const getPosCatalog = () => store.getPosCatalog();
 const generateStaffCode = async () => {
     const START = 10000;
     const latest = await prisma.user.findFirst({
-        where: { role: roles.STAFF, staffCode: { not: null } },
+        where: { role: { in: [roles.STAFF, roles.MANAGER] }, staffCode: { not: null } },
         orderBy: { staffCode: 'desc' },
         select: { staffCode: true },
     });
@@ -229,11 +229,39 @@ const toBranchResponse = (branch) => ({
     code: branch.code,
     address: branch.address || '',
     phone: branch.phone || '',
+    latitude: branch.latitude ?? null,
+    longitude: branch.longitude ?? null,
     status: String(branch.status || '').toLowerCase(),
     staffCount: branch._count?.staff || 0,
     inventoryItems: branch._count?.inventory || 0,
     createdAt: branch.createdAt,
 });
+
+const normalizeBranchCode = (code) => String(code || '').trim().toUpperCase();
+
+const ensureBranchUnique = async ({ code, address }, excludeId) => {
+    const normalizedCode = code ? normalizeBranchCode(code) : undefined;
+    const conditions = [];
+
+    if (normalizedCode) conditions.push({ code: normalizedCode });
+    if (address) conditions.push({ address: String(address).trim() });
+    if (!conditions.length) return;
+
+    const existing = await prisma.branch.findFirst({
+        where: {
+            OR: conditions,
+            ...(excludeId ? { id: { not: Number(excludeId) } } : {}),
+        },
+    });
+
+    if (existing?.code === normalizedCode) {
+        throw new BadRequestError('Mã chi nhánh đã tồn tại');
+    }
+
+    if (existing?.address === String(address || '').trim()) {
+        throw new BadRequestError('Địa chỉ cửa hàng này đã là một chi nhánh');
+    }
+};
 
 const getBranches = async () => {
     const branches = await prisma.branch.findMany({
@@ -246,6 +274,80 @@ const getBranches = async () => {
     });
 
     return branches.map(toBranchResponse);
+};
+
+const createBranch = async (payload) => {
+    await ensureBranchUnique({ code: payload.code, address: payload.address });
+
+    const branch = await prisma.$transaction(async (tx) => {
+        const createdBranch = await tx.branch.create({
+            data: {
+                name: String(payload.name).trim(),
+                code: normalizeBranchCode(payload.code),
+                address: String(payload.address).trim(),
+                phone: payload.phone ? String(payload.phone).trim() : null,
+                latitude: payload.latitude !== undefined ? Number(payload.latitude) : null,
+                longitude: payload.longitude !== undefined ? Number(payload.longitude) : null,
+                status: payload.status || 'ACTIVE',
+            },
+        });
+
+        const products = await tx.product.findMany({
+            select: { id: true, minStock: true, maxStock: true },
+        });
+
+        if (products.length) {
+            await tx.branchInventory.createMany({
+                data: products.map((product) => ({
+                    branchId: createdBranch.id,
+                    productId: product.id,
+                    stock: 0,
+                    minStock: product.minStock || 5,
+                    maxStock: product.maxStock || 20,
+                })),
+                skipDuplicates: true,
+            });
+        }
+
+        return tx.branch.findUnique({
+            where: { id: createdBranch.id },
+            include: {
+                _count: {
+                    select: { staff: true, inventory: true },
+                },
+            },
+        });
+    });
+
+    return toBranchResponse(branch);
+};
+
+const updateBranch = async (id, payload) => {
+    const branchId = Number(id);
+    const existing = await prisma.branch.findUnique({ where: { id: branchId } });
+    if (!existing) throw new NotFoundError('Không tìm thấy chi nhánh');
+
+    await ensureBranchUnique({ code: payload.code, address: payload.address }, branchId);
+
+    const branch = await prisma.branch.update({
+        where: { id: branchId },
+        data: {
+            ...(payload.name !== undefined ? { name: String(payload.name).trim() } : {}),
+            ...(payload.code !== undefined ? { code: normalizeBranchCode(payload.code) } : {}),
+            ...(payload.address !== undefined ? { address: String(payload.address).trim() } : {}),
+            ...(payload.phone !== undefined ? { phone: payload.phone ? String(payload.phone).trim() : null } : {}),
+            ...(payload.latitude !== undefined ? { latitude: payload.latitude === null || payload.latitude === '' ? null : Number(payload.latitude) } : {}),
+            ...(payload.longitude !== undefined ? { longitude: payload.longitude === null || payload.longitude === '' ? null : Number(payload.longitude) } : {}),
+            ...(payload.status !== undefined ? { status: payload.status } : {}),
+        },
+        include: {
+            _count: {
+                select: { staff: true, inventory: true },
+            },
+        },
+    });
+
+    return toBranchResponse(branch);
 };
 
 const getStaffs = async () => {
@@ -386,6 +488,8 @@ module.exports = {
     getCollectionItems,
     getCustomers,
     getBranches,
+    createBranch,
+    updateBranch,
     createCollectionItem,
     updateCollectionItem,
     deleteCollectionItem,

@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Dark theme - Guitar Store Admin Dashboard */
+  /* Dark theme - GuitarHub Manager */
   --background: oklch(0.13 0.005 285);
   --foreground: oklch(0.95 0 0);
   --card: oklch(0.18 0.005 285);

@@ -3265,10 +3265,14 @@ export namespace Prisma {
 
   export type BranchAvgAggregateOutputType = {
     id: number | null
+    latitude: number | null
+    longitude: number | null
   }
 
   export type BranchSumAggregateOutputType = {
     id: number | null
+    latitude: number | null
+    longitude: number | null
   }
 
   export type BranchMinAggregateOutputType = {
@@ -3277,6 +3281,8 @@ export namespace Prisma {
     code: string | null
     address: string | null
     phone: string | null
+    latitude: number | null
+    longitude: number | null
     status: $Enums.BranchStatus | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -3288,6 +3294,8 @@ export namespace Prisma {
     code: string | null
     address: string | null
     phone: string | null
+    latitude: number | null
+    longitude: number | null
     status: $Enums.BranchStatus | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -3299,6 +3307,8 @@ export namespace Prisma {
     code: number
     address: number
     phone: number
+    latitude: number
+    longitude: number
     status: number
     createdAt: number
     updatedAt: number
@@ -3308,10 +3318,14 @@ export namespace Prisma {
 
   export type BranchAvgAggregateInputType = {
     id?: true
+    latitude?: true
+    longitude?: true
   }
 
   export type BranchSumAggregateInputType = {
     id?: true
+    latitude?: true
+    longitude?: true
   }
 
   export type BranchMinAggregateInputType = {
@@ -3320,6 +3334,8 @@ export namespace Prisma {
     code?: true
     address?: true
     phone?: true
+    latitude?: true
+    longitude?: true
     status?: true
     createdAt?: true
     updatedAt?: true
@@ -3331,6 +3347,8 @@ export namespace Prisma {
     code?: true
     address?: true
     phone?: true
+    latitude?: true
+    longitude?: true
     status?: true
     createdAt?: true
     updatedAt?: true
@@ -3342,6 +3360,8 @@ export namespace Prisma {
     code?: true
     address?: true
     phone?: true
+    latitude?: true
+    longitude?: true
     status?: true
     createdAt?: true
     updatedAt?: true
@@ -3440,6 +3460,8 @@ export namespace Prisma {
     code: string
     address: string | null
     phone: string | null
+    latitude: number | null
+    longitude: number | null
     status: $Enums.BranchStatus
     createdAt: Date
     updatedAt: Date
@@ -3470,6 +3492,8 @@ export namespace Prisma {
     code?: boolean
     address?: boolean
     phone?: boolean
+    latitude?: boolean
+    longitude?: boolean
     status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -3485,6 +3509,8 @@ export namespace Prisma {
     code?: boolean
     address?: boolean
     phone?: boolean
+    latitude?: boolean
+    longitude?: boolean
     status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -3496,6 +3522,8 @@ export namespace Prisma {
     code?: boolean
     address?: boolean
     phone?: boolean
+    latitude?: boolean
+    longitude?: boolean
     status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -3522,6 +3550,8 @@ export namespace Prisma {
       code: string
       address: string | null
       phone: string | null
+      latitude: number | null
+      longitude: number | null
       status: $Enums.BranchStatus
       createdAt: Date
       updatedAt: Date
@@ -3926,6 +3956,8 @@ export namespace Prisma {
     readonly code: FieldRef<"Branch", 'String'>
     readonly address: FieldRef<"Branch", 'String'>
     readonly phone: FieldRef<"Branch", 'String'>
+    readonly latitude: FieldRef<"Branch", 'Float'>
+    readonly longitude: FieldRef<"Branch", 'Float'>
     readonly status: FieldRef<"Branch", 'BranchStatus'>
     readonly createdAt: FieldRef<"Branch", 'DateTime'>
     readonly updatedAt: FieldRef<"Branch", 'DateTime'>
@@ -13989,6 +14021,8 @@ export namespace Prisma {
     code: 'code',
     address: 'address',
     phone: 'phone',
+    latitude: 'latitude',
+    longitude: 'longitude',
     status: 'status',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
@@ -14272,6 +14306,20 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'Float'
+   */
+  export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+    
+
+
+  /**
+   * Reference to a field of type 'Float[]'
+   */
+  export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
+    
+
+
+  /**
    * Reference to a field of type 'BranchStatus'
    */
   export type EnumBranchStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BranchStatus'>
@@ -14409,20 +14457,6 @@ export namespace Prisma {
    */
   export type ListEnumOrderStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'OrderStatus[]'>
     
-
-
-  /**
-   * Reference to a field of type 'Float'
-   */
-  export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
-    
-
-
-  /**
-   * Reference to a field of type 'Float[]'
-   */
-  export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
-    
   /**
    * Deep Input Types
    */
@@ -14543,6 +14577,8 @@ export namespace Prisma {
     code?: StringFilter<"Branch"> | string
     address?: StringNullableFilter<"Branch"> | string | null
     phone?: StringNullableFilter<"Branch"> | string | null
+    latitude?: FloatNullableFilter<"Branch"> | number | null
+    longitude?: FloatNullableFilter<"Branch"> | number | null
     status?: EnumBranchStatusFilter<"Branch"> | $Enums.BranchStatus
     createdAt?: DateTimeFilter<"Branch"> | Date | string
     updatedAt?: DateTimeFilter<"Branch"> | Date | string
@@ -14557,6 +14593,8 @@ export namespace Prisma {
     code?: SortOrder
     address?: SortOrderInput | SortOrder
     phone?: SortOrderInput | SortOrder
+    latitude?: SortOrderInput | SortOrder
+    longitude?: SortOrderInput | SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -14574,6 +14612,8 @@ export namespace Prisma {
     name?: StringFilter<"Branch"> | string
     address?: StringNullableFilter<"Branch"> | string | null
     phone?: StringNullableFilter<"Branch"> | string | null
+    latitude?: FloatNullableFilter<"Branch"> | number | null
+    longitude?: FloatNullableFilter<"Branch"> | number | null
     status?: EnumBranchStatusFilter<"Branch"> | $Enums.BranchStatus
     createdAt?: DateTimeFilter<"Branch"> | Date | string
     updatedAt?: DateTimeFilter<"Branch"> | Date | string
@@ -14588,6 +14628,8 @@ export namespace Prisma {
     code?: SortOrder
     address?: SortOrderInput | SortOrder
     phone?: SortOrderInput | SortOrder
+    latitude?: SortOrderInput | SortOrder
+    longitude?: SortOrderInput | SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -14607,6 +14649,8 @@ export namespace Prisma {
     code?: StringWithAggregatesFilter<"Branch"> | string
     address?: StringNullableWithAggregatesFilter<"Branch"> | string | null
     phone?: StringNullableWithAggregatesFilter<"Branch"> | string | null
+    latitude?: FloatNullableWithAggregatesFilter<"Branch"> | number | null
+    longitude?: FloatNullableWithAggregatesFilter<"Branch"> | number | null
     status?: EnumBranchStatusWithAggregatesFilter<"Branch"> | $Enums.BranchStatus
     createdAt?: DateTimeWithAggregatesFilter<"Branch"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Branch"> | Date | string
@@ -15542,6 +15586,8 @@ export namespace Prisma {
     code: string
     address?: string | null
     phone?: string | null
+    latitude?: number | null
+    longitude?: number | null
     status?: $Enums.BranchStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -15556,6 +15602,8 @@ export namespace Prisma {
     code: string
     address?: string | null
     phone?: string | null
+    latitude?: number | null
+    longitude?: number | null
     status?: $Enums.BranchStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -15569,6 +15617,8 @@ export namespace Prisma {
     code?: StringFieldUpdateOperationsInput | string
     address?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
     status?: EnumBranchStatusFieldUpdateOperationsInput | $Enums.BranchStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -15583,6 +15633,8 @@ export namespace Prisma {
     code?: StringFieldUpdateOperationsInput | string
     address?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
     status?: EnumBranchStatusFieldUpdateOperationsInput | $Enums.BranchStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -15597,6 +15649,8 @@ export namespace Prisma {
     code: string
     address?: string | null
     phone?: string | null
+    latitude?: number | null
+    longitude?: number | null
     status?: $Enums.BranchStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -15607,6 +15661,8 @@ export namespace Prisma {
     code?: StringFieldUpdateOperationsInput | string
     address?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
     status?: EnumBranchStatusFieldUpdateOperationsInput | $Enums.BranchStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -15618,6 +15674,8 @@ export namespace Prisma {
     code?: StringFieldUpdateOperationsInput | string
     address?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
     status?: EnumBranchStatusFieldUpdateOperationsInput | $Enums.BranchStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -16783,6 +16841,17 @@ export namespace Prisma {
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
 
+  export type FloatNullableFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableFilter<$PrismaModel> | number | null
+  }
+
   export type EnumBranchStatusFilter<$PrismaModel = never> = {
     equals?: $Enums.BranchStatus | EnumBranchStatusFieldRefInput<$PrismaModel>
     in?: $Enums.BranchStatus[] | ListEnumBranchStatusFieldRefInput<$PrismaModel>
@@ -16816,6 +16885,8 @@ export namespace Prisma {
     code?: SortOrder
     address?: SortOrder
     phone?: SortOrder
+    latitude?: SortOrder
+    longitude?: SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -16823,6 +16894,8 @@ export namespace Prisma {
 
   export type BranchAvgOrderByAggregateInput = {
     id?: SortOrder
+    latitude?: SortOrder
+    longitude?: SortOrder
   }
 
   export type BranchMaxOrderByAggregateInput = {
@@ -16831,6 +16904,8 @@ export namespace Prisma {
     code?: SortOrder
     address?: SortOrder
     phone?: SortOrder
+    latitude?: SortOrder
+    longitude?: SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -16842,6 +16917,8 @@ export namespace Prisma {
     code?: SortOrder
     address?: SortOrder
     phone?: SortOrder
+    latitude?: SortOrder
+    longitude?: SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -16849,6 +16926,24 @@ export namespace Prisma {
 
   export type BranchSumOrderByAggregateInput = {
     id?: SortOrder
+    latitude?: SortOrder
+    longitude?: SortOrder
+  }
+
+  export type FloatNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedFloatNullableFilter<$PrismaModel>
+    _min?: NestedFloatNullableFilter<$PrismaModel>
+    _max?: NestedFloatNullableFilter<$PrismaModel>
   }
 
   export type EnumBranchStatusWithAggregatesFilter<$PrismaModel = never> = {
@@ -17892,6 +17987,14 @@ export namespace Prisma {
     connect?: OrderWhereUniqueInput | OrderWhereUniqueInput[]
   }
 
+  export type NullableFloatFieldUpdateOperationsInput = {
+    set?: number | null
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
   export type EnumBranchStatusFieldUpdateOperationsInput = {
     set?: $Enums.BranchStatus
   }
@@ -18714,6 +18817,22 @@ export namespace Prisma {
     not?: NestedEnumBranchStatusFilter<$PrismaModel> | $Enums.BranchStatus
   }
 
+  export type NestedFloatNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedFloatNullableFilter<$PrismaModel>
+    _min?: NestedFloatNullableFilter<$PrismaModel>
+    _max?: NestedFloatNullableFilter<$PrismaModel>
+  }
+
   export type NestedEnumBranchStatusWithAggregatesFilter<$PrismaModel = never> = {
     equals?: $Enums.BranchStatus | EnumBranchStatusFieldRefInput<$PrismaModel>
     in?: $Enums.BranchStatus[] | ListEnumBranchStatusFieldRefInput<$PrismaModel>
@@ -19063,6 +19182,8 @@ export namespace Prisma {
     code: string
     address?: string | null
     phone?: string | null
+    latitude?: number | null
+    longitude?: number | null
     status?: $Enums.BranchStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -19076,6 +19197,8 @@ export namespace Prisma {
     code: string
     address?: string | null
     phone?: string | null
+    latitude?: number | null
+    longitude?: number | null
     status?: $Enums.BranchStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -19185,6 +19308,8 @@ export namespace Prisma {
     code?: StringFieldUpdateOperationsInput | string
     address?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
     status?: EnumBranchStatusFieldUpdateOperationsInput | $Enums.BranchStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -19198,6 +19323,8 @@ export namespace Prisma {
     code?: StringFieldUpdateOperationsInput | string
     address?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
     status?: EnumBranchStatusFieldUpdateOperationsInput | $Enums.BranchStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -19886,6 +20013,8 @@ export namespace Prisma {
     code: string
     address?: string | null
     phone?: string | null
+    latitude?: number | null
+    longitude?: number | null
     status?: $Enums.BranchStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -19899,6 +20028,8 @@ export namespace Prisma {
     code: string
     address?: string | null
     phone?: string | null
+    latitude?: number | null
+    longitude?: number | null
     status?: $Enums.BranchStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -19983,6 +20114,8 @@ export namespace Prisma {
     code?: StringFieldUpdateOperationsInput | string
     address?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
     status?: EnumBranchStatusFieldUpdateOperationsInput | $Enums.BranchStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -19996,6 +20129,8 @@ export namespace Prisma {
     code?: StringFieldUpdateOperationsInput | string
     address?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
     status?: EnumBranchStatusFieldUpdateOperationsInput | $Enums.BranchStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -20439,6 +20574,8 @@ export namespace Prisma {
     code: string
     address?: string | null
     phone?: string | null
+    latitude?: number | null
+    longitude?: number | null
     status?: $Enums.BranchStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -20452,6 +20589,8 @@ export namespace Prisma {
     code: string
     address?: string | null
     phone?: string | null
+    latitude?: number | null
+    longitude?: number | null
     status?: $Enums.BranchStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -20605,6 +20744,8 @@ export namespace Prisma {
     code?: StringFieldUpdateOperationsInput | string
     address?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
     status?: EnumBranchStatusFieldUpdateOperationsInput | $Enums.BranchStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -20618,6 +20759,8 @@ export namespace Prisma {
     code?: StringFieldUpdateOperationsInput | string
     address?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    latitude?: NullableFloatFieldUpdateOperationsInput | number | null
+    longitude?: NullableFloatFieldUpdateOperationsInput | number | null
     status?: EnumBranchStatusFieldUpdateOperationsInput | $Enums.BranchStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string

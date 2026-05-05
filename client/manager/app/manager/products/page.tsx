@@ -1,12 +1,21 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { Loader2, MoreHorizontal, Package, Pencil, Plus, Trash2 } from "lucide-react"
 import { Topbar } from "@/components/dashboard/topbar"
 import { DataTable } from "@/components/dashboard/data-table"
 import { ProductForm } from "@/components/dashboard/product-form"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,13 +32,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import type { Category, Brand, Product } from "@/lib/manager-types"
-import { Plus, MoreHorizontal, Pencil, Trash2, Package, Loader2 } from "lucide-react"
+import type { Branch, Brand, Category, Product } from "@/lib/manager-types"
 import { cn } from "@/lib/utils"
 import { getErrorMessage } from "@/lib/api"
 import {
   createManagerProduct,
   deleteManagerProduct,
+  getManagerBranches,
   getManagerBrands,
   getManagerCategories,
   getManagerProducts,
@@ -42,10 +51,24 @@ const statusStyles = {
   archived: "bg-muted text-muted-foreground border-muted",
 }
 
+function getBranchStock(product: Product, branchId: string) {
+  if (branchId === "all") return product.stock
+  return product.branchInventory?.find((item) => item.branchId === branchId)?.stock || 0
+}
+
+function getBranchLabel(branches: Branch[], branchId: string) {
+  if (branchId === "all") return "Tất cả chi nhánh"
+  const branch = branches.find((item) => item.id === branchId)
+  return branch ? `${branch.code} - ${branch.name}` : "Chi nhánh đã chọn"
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [brands, setBrands] = useState<Brand[]>([])
+  const [branches, setBranches] = useState<Branch[]>([])
+  const [branchFilter, setBranchFilter] = useState("all")
+  const [availabilityFilter, setAvailabilityFilter] = useState("all")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [formOpen, setFormOpen] = useState(false)
@@ -55,27 +78,45 @@ export default function ProductsPage() {
     product: null,
   })
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [productsRes, categoriesRes, brandsRes] = await Promise.all([
-          getManagerProducts(),
-          getManagerCategories(),
-          getManagerBrands(),
-        ])
+  const loadData = async () => {
+    try {
+      setIsLoading(true)
+      const [productsRes, categoriesRes, brandsRes, branchesRes] = await Promise.all([
+        getManagerProducts(),
+        getManagerCategories(),
+        getManagerBrands(),
+        getManagerBranches(),
+      ])
 
-        setProducts(productsRes.metadata)
-        setCategories(categoriesRes.metadata)
-        setBrands(brandsRes.metadata)
-      } catch (loadError) {
-        setError(getErrorMessage(loadError, "Không thể tải dữ liệu sản phẩm"))
-      } finally {
-        setIsLoading(false)
-      }
+      setProducts(productsRes.metadata)
+      setCategories(categoriesRes.metadata)
+      setBrands(brandsRes.metadata)
+      setBranches(branchesRes.metadata)
+      setError("")
+    } catch (loadError) {
+      setError(getErrorMessage(loadError, "Không thể tải dữ liệu sản phẩm"))
+    } finally {
+      setIsLoading(false)
     }
+  }
 
+  useEffect(() => {
     void loadData()
   }, [])
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const stock = getBranchStock(product, branchFilter)
+      if (availabilityFilter === "available") return stock > 0
+      if (availabilityFilter === "out") return stock === 0
+      return true
+    })
+  }, [availabilityFilter, branchFilter, products])
+
+  const totalVisibleStock = useMemo(
+    () => filteredProducts.reduce((sum, product) => sum + getBranchStock(product, branchFilter), 0),
+    [branchFilter, filteredProducts]
+  )
 
   const handleAddProduct = async (data: Record<string, unknown>) => {
     try {
@@ -127,17 +168,47 @@ export default function ProductsPage() {
         </div>
       ),
     },
-    { key: "category" as const, header: "Danh mục", render: (product: Product) => <span className="text-muted-foreground">{product.category}</span> },
-    { key: "brand" as const, header: "Thương hiệu", render: (product: Product) => <span className="text-muted-foreground">{product.brand}</span> },
-    { key: "price" as const, header: "Giá", render: (product: Product) => <span className="font-medium">${product.price.toLocaleString()}</span> },
+    {
+      key: "category" as const,
+      header: "Danh mục",
+      render: (product: Product) => <span className="text-muted-foreground">{product.category}</span>,
+    },
+    {
+      key: "brand" as const,
+      header: "Thương hiệu",
+      render: (product: Product) => <span className="text-muted-foreground">{product.brand}</span>,
+    },
+    {
+      key: "price" as const,
+      header: "Giá",
+      render: (product: Product) => <span className="font-medium">{product.price.toLocaleString("vi-VN")} VND</span>,
+    },
     {
       key: "stock" as const,
-      header: "Tồn kho",
-      render: (product: Product) => (
-        <span className={cn("font-medium", product.stock === 0 ? "text-destructive" : product.stock < 5 ? "text-warning" : "text-foreground")}>
-          {product.stock}
-        </span>
-      ),
+      header: branchFilter === "all" ? "Tồn tổng" : "Tồn tại chi nhánh",
+      render: (product: Product) => {
+        const displayStock = getBranchStock(product, branchFilter)
+        const selectedInventory = product.branchInventory?.find((item) => item.branchId === branchFilter)
+
+        return (
+          <div>
+            <span className={cn("font-medium", displayStock === 0 ? "text-destructive" : displayStock < 5 ? "text-warning" : "text-foreground")}>
+              {displayStock}
+            </span>
+            {branchFilter === "all" ? (
+              product.branchInventory?.length ? (
+                <p className="mt-1 max-w-56 truncate text-xs text-muted-foreground">
+                  {product.branchInventory.map((item) => `${item.branchCode || item.branchName}: ${item.stock}`).join(" | ")}
+                </p>
+              ) : null
+            ) : (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {selectedInventory?.branchName || getBranchLabel(branches, branchFilter)}
+              </p>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: "status" as const,
@@ -152,15 +223,59 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen">
-      <Topbar title="Sản phẩm" description="Quản lý danh mục sản phẩm" />
+      <Topbar title="Sản phẩm" description="Quản lý sản phẩm và tồn kho theo từng chi nhánh" />
       <main className="p-6">
         {error ? <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">{error}</div> : null}
+
+        <Card className="mb-6 bg-card border-border">
+          <CardContent className="grid gap-4 p-5 md:grid-cols-[1.4fr_1fr_1fr]">
+            <div className="grid gap-2">
+              <Label>Chi nhánh</Label>
+              <Select value={branchFilter} onValueChange={setBranchFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn chi nhánh" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả chi nhánh</SelectItem>
+                  {branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.code} - {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Trạng thái tồn</Label>
+              <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả hàng hóa</SelectItem>
+                  <SelectItem value="available">Chỉ hàng đang có</SelectItem>
+                  <SelectItem value="out">Chỉ hàng hết tồn</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="rounded-lg border border-border bg-secondary/40 px-4 py-3">
+              <p className="text-sm text-muted-foreground">{getBranchLabel(branches, branchFilter)}</p>
+              <p className="mt-1 text-2xl font-bold">{totalVisibleStock.toLocaleString("vi-VN")}</p>
+              <p className="text-xs text-muted-foreground">tồn kho trong danh sách đang xem</p>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-card-foreground">Tất cả sản phẩm</h2>
-                <p className="text-sm text-muted-foreground">Có {products.length} sản phẩm trong danh mục</p>
+                <h2 className="text-lg font-semibold text-card-foreground">
+                  {branchFilter === "all" ? "Tất cả sản phẩm" : `Sản phẩm tại ${getBranchLabel(branches, branchFilter)}`}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Có {filteredProducts.length} sản phẩm phù hợp bộ lọc
+                </p>
               </div>
               <Button onClick={() => setFormOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -174,7 +289,7 @@ export default function ProductsPage() {
               </div>
             ) : (
               <DataTable
-                data={products}
+                data={filteredProducts}
                 columns={columns}
                 searchKey="name"
                 searchPlaceholder="Tìm sản phẩm..."
@@ -212,6 +327,7 @@ export default function ProductsPage() {
         product={editingProduct}
         categories={categories}
         brands={brands}
+        branches={branches}
         onSubmit={editingProduct ? handleEditProduct : handleAddProduct}
       />
 

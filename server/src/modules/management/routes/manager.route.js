@@ -5,6 +5,7 @@ const controller = require('../controllers/management.controller');
 const { authenticate, authorize } = require('../../../core/middlewares');
 const { roles } = require('../../auth/constants');
 const { createStaffValidator, updateStaffValidator, resetStaffPasswordValidator } = require('../validators/staff.validator');
+const { createBranchValidator, updateBranchValidator } = require('../validators/branch.validator');
 
 const router = express.Router();
 
@@ -14,6 +15,8 @@ router.get('/dashboard/overview', controller.getDashboardOverview);
 
 router.get('/customers', controller.getCustomers);
 router.get('/branches', controller.getBranches);
+router.post('/branches', createBranchValidator, controller.createBranch);
+router.patch('/branches/:id', updateBranchValidator, controller.updateBranch);
 
 router.get('/vouchers', controller.getVouchers);
 router.post('/vouchers', controller.createVoucher);
