@@ -8,7 +8,13 @@ export type StaffOrderStatus =
   | "cancelled"
 
 export type StaffPaymentStatus = "pending" | "paid" | "failed" | "refunded"
-export type StaffPaymentMethod = "cod" | "vnpay" | "momo" | "zalopay"
+export type StaffPaymentMethod =
+  | "cod"
+  | "vnpay"
+  | "momo"
+  | "zalopay"
+  | "cash"
+  | "bank_transfer"
 
 export interface StaffOrderLineItem {
   id: string

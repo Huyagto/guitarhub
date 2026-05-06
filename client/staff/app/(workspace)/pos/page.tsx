@@ -14,6 +14,8 @@ import {
 } from '@/lib/pos-data'
 import { createPosOrder, getPosCatalog, validatePosVoucher } from '@/lib/pos-api'
 import { getErrorMessage } from '@/lib/api'
+import { getStoredStaffUser } from '@/lib/auth'
+import { printPosReceipt } from '@/lib/staff-receipt'
 
 const POS_CATALOG_CACHE_KEY = 'staff_pos_catalog_cache'
 
@@ -143,6 +145,12 @@ export default function POSPage() {
     }
   }, [discountCode, subtotal])
 
+  const handleDiscountCodeChange = useCallback((code: string) => {
+    setDiscountCode(code)
+    setDiscountAmount(0)
+    setDiscountError('')
+  }, [])
+
   const handleCheckout = useCallback(() => setShowPaymentModal(true), [])
 
   const handleConfirmPayment = useCallback(async (method: PaymentMethod) => {
@@ -154,11 +162,11 @@ export default function POSPage() {
         customerPhone: customerInfo.phone || undefined,
         note: customerInfo.note || undefined,
         paymentMethod: method,
+        voucherCode: discountCode.trim() || undefined,
         items: orderItems.map((item) => ({
           productId: item.product.id,
           quantity: item.quantity,
         })),
-        totals: { discountAmount },
       }
       const response = await createPosOrder(payload)
       setPaymentMethod(method)
@@ -175,7 +183,7 @@ export default function POSPage() {
     } finally {
       setIsCreatingOrder(false)
     }
-  }, [orderItems, customerInfo, discountAmount])
+  }, [orderItems, customerInfo, discountCode])
 
   const handleNewOrder = useCallback(() => {
     setShowSuccessModal(false)
@@ -188,8 +196,16 @@ export default function POSPage() {
   }, [])
 
   const handlePrintReceipt = useCallback(() => {
-    window.print()
-  }, [])
+    printPosReceipt({
+      orderNumber,
+      items: orderItems,
+      customerInfo,
+      paymentMethod,
+      total,
+      discountAmount,
+      staff: getStoredStaffUser(),
+    })
+  }, [customerInfo, discountAmount, orderItems, orderNumber, paymentMethod, total])
 
   return (
     <>
@@ -226,7 +242,7 @@ export default function POSPage() {
             onRemoveItem={handleRemoveItem}
             onClearCart={handleClearCart}
             onCustomerInfoChange={setCustomerInfo}
-            onDiscountCodeChange={setDiscountCode}
+            onDiscountCodeChange={handleDiscountCodeChange}
             onApplyDiscount={handleApplyDiscount}
             onCheckout={handleCheckout}
           />
@@ -253,6 +269,7 @@ export default function POSPage() {
         paymentMethod={paymentMethod}
         total={total}
         discountAmount={discountAmount}
+        staff={getStoredStaffUser()}
         onNewOrder={handleNewOrder}
         onPrintReceipt={handlePrintReceipt}
       />

@@ -26,7 +26,7 @@ import { OrderStatusBadge } from "@/components/ui/order-status-badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getErrorMessage } from "@/lib/api"
 import { getAccessToken } from "@/lib/auth"
-import { getCustomerOrders, type CustomerOrder } from "@/lib/customer-auth-api"
+import { cancelCustomerOrder, getCustomerOrders, type CustomerOrder } from "@/lib/customer-auth-api"
 import { formatPrice } from "@/lib/format"
 
 const paymentMethodLabels: Record<CustomerOrder["paymentMethod"], string> = {
@@ -47,6 +47,7 @@ export default function ProfileOrdersPage() {
   const [orders, setOrders] = useState<CustomerOrder[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
 
   const totalSpent = useMemo(
     () => orders.reduce((sum, order) => sum + order.total, 0),
@@ -85,6 +86,22 @@ export default function ProfileOrdersPage() {
   useEffect(() => {
     void loadOrders()
   }, [])
+
+  const handleCancelOrder = async (orderId: string) => {
+    const accessToken = getAccessToken()
+    if (!accessToken) return
+
+    setCancellingOrderId(orderId)
+    setError("")
+    try {
+      const response = await cancelCustomerOrder(accessToken, orderId)
+      setOrders((current) => current.map((order) => (order.id === orderId ? response.metadata : order)))
+    } catch (cancelError) {
+      setError(getErrorMessage(cancelError, "Không thể hủy đơn hàng"))
+    } finally {
+      setCancellingOrderId(null)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -316,6 +333,26 @@ export default function ProfileOrdersPage() {
                   {order.note ? (
                     <div className="rounded-xl bg-muted/30 p-4 text-sm text-muted-foreground">
                       Ghi chú: {order.note}
+                    </div>
+                  ) : null}
+
+                  {["awaiting_payment", "pending_confirmation", "confirmed"].includes(order.status) ? (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        className="text-destructive hover:text-destructive"
+                        disabled={cancellingOrderId === order.id}
+                        onClick={() => void handleCancelOrder(order.id)}
+                      >
+                        {cancellingOrderId === order.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Đang hủy...
+                          </>
+                        ) : (
+                          "Hủy đơn hàng"
+                        )}
+                      </Button>
                     </div>
                   ) : null}
                 </CardContent>

@@ -2,11 +2,11 @@
 
 import { useEffect, useTransition } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { ClipboardList, Store } from "lucide-react"
+import { ClipboardList, History, PackageSearch, Store, TimerOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface StaffWorkspaceNavProps {
-  active: "pos" | "orders"
+  active: "pos" | "orders" | "history" | "inventory" | "shift"
   ordersBadgeCount?: number
 }
 
@@ -23,6 +23,24 @@ const links = [
     label: "Đơn hàng online",
     icon: ClipboardList,
   },
+  {
+    key: "history" as const,
+    href: "/history",
+    label: "Lịch sử đơn",
+    icon: History,
+  },
+  {
+    key: "inventory" as const,
+    href: "/inventory",
+    label: "Tồn kho",
+    icon: PackageSearch,
+  },
+  {
+    key: "shift" as const,
+    href: "/shift",
+    label: "Đóng ca",
+    icon: TimerOff,
+  },
 ]
 
 export function StaffWorkspaceNav({ active, ordersBadgeCount = 0 }: StaffWorkspaceNavProps) {
@@ -31,12 +49,11 @@ export function StaffWorkspaceNav({ active, ordersBadgeCount = 0 }: StaffWorkspa
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
-    router.prefetch("/pos")
-    router.prefetch("/orders")
+    links.forEach((link) => router.prefetch(link.href))
   }, [router])
 
   return (
-    <div className="inline-flex rounded-2xl border border-border bg-muted/50 p-1">
+    <div className="inline-flex items-center rounded-xl border border-border bg-muted/50 p-1">
       {links.map((link) => {
         const Icon = link.icon
         const isActive = active === link.key || pathname === link.href
@@ -55,7 +72,7 @@ export function StaffWorkspaceNav({ active, ordersBadgeCount = 0 }: StaffWorkspa
               })
             }}
             className={cn(
-              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200",
+              "inline-flex h-10 min-w-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition-all duration-200",
               isActive
                 ? "bg-foreground text-background shadow-sm"
                 : "text-muted-foreground hover:bg-background hover:text-foreground",
@@ -63,7 +80,7 @@ export function StaffWorkspaceNav({ active, ordersBadgeCount = 0 }: StaffWorkspa
             )}
           >
             <Icon className="h-4 w-4" />
-            {link.label}
+            <span className="hidden whitespace-nowrap xl:inline">{link.label}</span>
             {showBadge ? (
               <span
                 className={cn(

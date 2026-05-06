@@ -11,7 +11,10 @@ const router = express.Router();
 router.use(authenticate, authorize(roles.STAFF));
 
 router.get('/', orderStaffController.getOrders);
+router.get('/history', orderStaffController.getOrderHistory);
 router.post('/', orderStaffController.createPosOrder);
 router.patch('/:id/status', updateOrderStatusValidator, orderStaffController.updateOrderStatus);
+router.patch('/:id/cancel', orderStaffController.cancelPosOrder);
+router.patch('/:id', orderStaffController.updatePosOrder);
 
 module.exports = router;

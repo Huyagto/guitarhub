@@ -23,9 +23,27 @@ export async function getStaffOrders() {
   return staffRequest<StaffOrder[]>("/api/staff/orders")
 }
 
+export async function getStaffOrderHistory() {
+  return staffRequest<StaffOrder[]>("/api/staff/orders/history")
+}
+
 export async function updateStaffOrderStatus(id: string, status: StaffOrderStatus) {
   return staffRequest<StaffOrder>(`/api/staff/orders/${id}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
+  })
+}
+
+export async function updateStaffPosOrder(id: string, payload: Partial<StaffOrder>) {
+  return staffRequest<StaffOrder>(`/api/staff/orders/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function cancelStaffPosOrder(id: string, note?: string) {
+  return staffRequest<StaffOrder>(`/api/staff/orders/${id}/cancel`, {
+    method: "PATCH",
+    body: JSON.stringify({ note }),
   })
 }

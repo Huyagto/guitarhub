@@ -4,15 +4,6 @@ const { Created, OK } = require('../../../core');
 const { validateRequest } = require('../../auth/shared/utils');
 const managementService = require('../services/management.service');
 
-const getCollection = (collection) => (req, res, next) => {
-    try {
-        const metadata = managementService.getCollectionItems(collection);
-        return new OK({ message: 'Lay du lieu thanh cong', metadata }).send(res);
-    } catch (error) {
-        next(error);
-    }
-};
-
 const getCustomers = async (req, res, next) => {
     try {
         const metadata = await managementService.getCustomers();
@@ -51,46 +42,10 @@ const updateBranch = async (req, res, next) => {
     }
 };
 
-const createCollectionItem = (collection) => (req, res, next) => {
-    try {
-        const metadata = managementService.createCollectionItem(collection, req.body);
-        return new Created({ message: 'Tao du lieu thanh cong', metadata }).send(res);
-    } catch (error) {
-        next(error);
-    }
-};
-
-const updateCollectionItem = (collection) => (req, res, next) => {
-    try {
-        const metadata = managementService.updateCollectionItem(collection, req.params.id, req.body);
-        return new OK({ message: 'Cap nhat du lieu thanh cong', metadata }).send(res);
-    } catch (error) {
-        next(error);
-    }
-};
-
-const deleteCollectionItem = (collection) => (req, res, next) => {
-    try {
-        const metadata = managementService.deleteCollectionItem(collection, req.params.id);
-        return new OK({ message: 'Xoa du lieu thanh cong', metadata }).send(res);
-    } catch (error) {
-        next(error);
-    }
-};
-
 const getDashboardOverview = async (req, res, next) => {
     try {
         const metadata = await managementService.getDashboardOverview();
         return new OK({ message: 'Lay tong quan dashboard thanh cong', metadata }).send(res);
-    } catch (error) {
-        next(error);
-    }
-};
-
-const getReportsSummary = async (req, res, next) => {
-    try {
-        const metadata = await managementService.getReportsSummary();
-        return new OK({ message: 'Lay du lieu bao cao thanh cong', metadata }).send(res);
     } catch (error) {
         next(error);
     }
@@ -177,33 +132,6 @@ const resetStaffPassword = async (req, res, next) => {
     } catch (error) { next(error); }
 };
 
-const restockInventoryItem = (req, res, next) => {
-    try {
-        const metadata = managementService.restockInventoryItem(req.params.id, Number(req.body.quantity));
-        return new OK({ message: 'Nhap them hang thanh cong', metadata }).send(res);
-    } catch (error) {
-        next(error);
-    }
-};
-
-const updateOrderStatus = (req, res, next) => {
-    try {
-        const metadata = managementService.updateOrderStatus(req.params.id, req.body.status);
-        return new OK({ message: 'Cap nhat trang thai don hang thanh cong', metadata }).send(res);
-    } catch (error) {
-        next(error);
-    }
-};
-
-const getPosCatalog = (req, res, next) => {
-    try {
-        const metadata = managementService.getPosCatalog();
-        return new OK({ message: 'Lay danh muc POS thanh cong', metadata }).send(res);
-    } catch (error) {
-        next(error);
-    }
-};
-
 const validatePosVoucher = async (req, res, next) => {
     try {
         const { code, subtotal } = req.body;
@@ -214,24 +142,34 @@ const validatePosVoucher = async (req, res, next) => {
     }
 };
 
+const getShiftCloses = async (req, res, next) => {
+    try {
+        const metadata = await managementService.getShiftCloses(req.user.id);
+        return new OK({ message: 'Lay lich su dong ca thanh cong', metadata }).send(res);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const closeShift = async (req, res, next) => {
+    try {
+        const metadata = await managementService.closeShift(req.user.id, req.body);
+        return new Created({ message: 'Dong ca thanh cong', metadata }).send(res);
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
-    getCollection,
     getCustomers,
     getBranches,
     createBranch,
     updateBranch,
-    createCollectionItem,
-    updateCollectionItem,
-    deleteCollectionItem,
     getDashboardOverview,
-    getReportsSummary,
     getVouchers,
     createVoucher,
     updateVoucher,
     deleteVoucher,
-    restockInventoryItem,
-    updateOrderStatus,
-    getPosCatalog,
     getStaffs,
     createStaff,
     updateStaff,
@@ -239,4 +177,6 @@ module.exports = {
     regenerateStaffCode,
     resetStaffPassword,
     validatePosVoucher,
+    getShiftCloses,
+    closeShift,
 };

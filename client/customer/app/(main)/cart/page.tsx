@@ -181,15 +181,6 @@ export default function CartPage() {
                     {formatPrice(subtotal)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Phí giao hàng</span>
-                  <span className="font-medium">
-                    <span className="text-muted-foreground">Tính theo chi nhánh</span>
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Phí giao hàng sẽ được tính theo khoảng cách từ địa chỉ của bạn tới chi nhánh được chọn ở bước thanh toán.
-                </p>
               </div>
 
               <div className="mt-6 border-t border-border pt-4">

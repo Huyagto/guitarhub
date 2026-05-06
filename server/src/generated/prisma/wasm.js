@@ -128,6 +128,7 @@ exports.Prisma.UserScalarFieldEnum = {
   password: 'password',
   fullName: 'fullName',
   phone: 'phone',
+  avatar: 'avatar',
   staffCode: 'staffCode',
   googleId: 'googleId',
   defaultShippingAddress: 'defaultShippingAddress',
@@ -275,6 +276,64 @@ exports.Prisma.OrderItemScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.ShiftCloseScalarFieldEnum = {
+  id: 'id',
+  staffId: 'staffId',
+  branchId: 'branchId',
+  businessDate: 'businessDate',
+  orderCount: 'orderCount',
+  storeOrderCount: 'storeOrderCount',
+  onlineOrderCount: 'onlineOrderCount',
+  revenue: 'revenue',
+  cashRevenue: 'cashRevenue',
+  transferRevenue: 'transferRevenue',
+  note: 'note',
+  closedAt: 'closedAt',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.OrderStatusHistoryScalarFieldEnum = {
+  id: 'id',
+  orderId: 'orderId',
+  fromStatus: 'fromStatus',
+  toStatus: 'toStatus',
+  changedByUserId: 'changedByUserId',
+  note: 'note',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.InventoryTransactionScalarFieldEnum = {
+  id: 'id',
+  branchId: 'branchId',
+  productId: 'productId',
+  staffId: 'staffId',
+  type: 'type',
+  quantity: 'quantity',
+  stockBefore: 'stockBefore',
+  stockAfter: 'stockAfter',
+  counterparty: 'counterparty',
+  note: 'note',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.ShiftSessionScalarFieldEnum = {
+  id: 'id',
+  staffId: 'staffId',
+  branchId: 'branchId',
+  status: 'status',
+  openedAt: 'openedAt',
+  closedAt: 'closedAt',
+  orderCount: 'orderCount',
+  storeOrderCount: 'storeOrderCount',
+  onlineOrderCount: 'onlineOrderCount',
+  revenue: 'revenue',
+  cashRevenue: 'cashRevenue',
+  transferRevenue: 'transferRevenue',
+  note: 'note',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -369,6 +428,20 @@ exports.OrderStatus = exports.$Enums.OrderStatus = {
   CANCELLED: 'CANCELLED'
 };
 
+exports.InventoryTransactionType = exports.$Enums.InventoryTransactionType = {
+  RECEIVE: 'RECEIVE',
+  ISSUE: 'ISSUE',
+  TRANSFER_IN: 'TRANSFER_IN',
+  TRANSFER_OUT: 'TRANSFER_OUT',
+  STOCKTAKE: 'STOCKTAKE',
+  SALE: 'SALE'
+};
+
+exports.ShiftStatus = exports.$Enums.ShiftStatus = {
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED'
+};
+
 exports.Prisma.ModelName = {
   User: 'User',
   Branch: 'Branch',
@@ -380,7 +453,11 @@ exports.Prisma.ModelName = {
   Cart: 'Cart',
   CartItem: 'CartItem',
   Order: 'Order',
-  OrderItem: 'OrderItem'
+  OrderItem: 'OrderItem',
+  ShiftClose: 'ShiftClose',
+  OrderStatusHistory: 'OrderStatusHistory',
+  InventoryTransaction: 'InventoryTransaction',
+  ShiftSession: 'ShiftSession'
 };
 
 /**

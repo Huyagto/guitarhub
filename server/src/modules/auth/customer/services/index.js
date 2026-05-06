@@ -1,7 +1,10 @@
 'use strict';
 
+const registerCustomer = require('./register-customer.service');
+
 module.exports = {
-    registerCustomer: require('./register-customer.service'),
+    registerCustomer,
+    verifyCustomerRegistration: registerCustomer.verifyCustomerRegistration,
     loginCustomer: require('./login-customer.service'),
     logoutCustomer: require('./logout-customer.service'),
     refreshCustomerToken: require('./refresh-customer-token.service'),

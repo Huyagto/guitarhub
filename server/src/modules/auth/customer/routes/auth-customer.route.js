@@ -14,11 +14,13 @@ const {
     refreshCustomerTokenValidator,
     updateCustomerProfileValidator,
     updateCustomerDefaultShippingAddressValidator,
+    verifyCustomerRegistrationValidator,
 } = require('../validators');
 
 const router = express.Router();
 
 router.post('/register', registerCustomerValidator, customerAuthController.register);
+router.post('/register/verify', verifyCustomerRegistrationValidator, customerAuthController.verifyRegistration);
 router.post('/login', loginCustomerValidator, customerAuthController.login);
 router.post('/forgot-password', forgotCustomerPasswordValidator, customerAuthController.forgotPassword);
 router.post('/verify-otp', verifyCustomerOtpValidator, customerAuthController.verifyOtp);

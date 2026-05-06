@@ -212,7 +212,7 @@ export default function StaffPage() {
   const columns = [
     {
       key: "fullName",
-      label: "Nhân viên",
+      header: "Nhân viên",
       render: (staff: Staff) => (
         <div>
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground inline-flex mr-3">
@@ -224,7 +224,7 @@ export default function StaffPage() {
     },
     {
       key: "staffCode",
-      label: "Mã nhân viên",
+      header: "Mã nhân viên",
       render: (staff: Staff) =>
         staff.staffCode ? (
           <div className="flex items-center gap-2">
@@ -243,12 +243,12 @@ export default function StaffPage() {
           </Badge>
         ),
     },
-    { key: "email", label: "Email", render: (staff: Staff) => <span className="text-muted-foreground">{staff.email}</span> },
-    { key: "phone", label: "Số điện thoại", render: (staff: Staff) => <span className="text-muted-foreground">{staff.phone || "—"}</span> },
-    { key: "branch", label: "Chi nhánh", render: (staff: Staff) => <span className="text-muted-foreground">{staff.branch?.name || "Chưa gán"}</span> },
+    { key: "email", header: "Email", render: (staff: Staff) => <span className="text-muted-foreground">{staff.email}</span> },
+    { key: "phone", header: "Số điện thoại", render: (staff: Staff) => <span className="text-muted-foreground">{staff.phone || "—"}</span> },
+    { key: "branch", header: "Chi nhánh", render: (staff: Staff) => <span className="text-muted-foreground">{staff.branch?.name || "Chưa gán"}</span> },
     {
       key: "isActive",
-      label: "Trạng thái",
+      header: "Trạng thái",
       render: (staff: Staff) => (
         <Badge variant="outline" className={staff.isActive ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : "bg-muted text-muted-foreground border-border"}>
           {staff.isActive ? "Đang hoạt động" : "Đã khóa"}
@@ -257,7 +257,7 @@ export default function StaffPage() {
     },
     {
       key: "createdAt",
-      label: "Ngày tạo",
+      header: "Ngày tạo",
       render: (staff: Staff) => (
         <span className="text-sm text-muted-foreground">
           {new Date(staff.createdAt).toLocaleDateString("vi-VN")}
@@ -266,7 +266,7 @@ export default function StaffPage() {
     },
     {
       key: "actions",
-      label: "",
+      header: "",
       render: (staff: Staff) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

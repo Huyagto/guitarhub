@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import type { StaffAuthUser } from '@/lib/auth'
 import { type OrderItem, type CustomerInfo, type PaymentMethod, formatCurrency } from '@/lib/pos-data'
 
 interface SuccessModalProps {
@@ -19,6 +20,7 @@ interface SuccessModalProps {
   paymentMethod: PaymentMethod
   total: number
   discountAmount: number
+  staff?: StaffAuthUser | null
   onNewOrder: () => void
   onPrintReceipt: () => void
 }
@@ -40,6 +42,7 @@ export function SuccessModal({
   paymentMethod,
   total,
   discountAmount,
+  staff,
   onNewOrder,
   onPrintReceipt,
 }: SuccessModalProps) {
@@ -47,6 +50,9 @@ export function SuccessModal({
     (sum, item) => sum + item.product.price * item.quantity,
     0
   )
+  const branchName = staff?.branch ? `${staff.branch.code} - ${staff.branch.name}` : 'GuitarHub'
+  const branchAddress = staff?.branch?.address || 'Chi nhánh GuitarHub'
+  const cashierName = staff?.fullName || 'Nhân viên'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -72,12 +78,11 @@ export function SuccessModal({
           <div className="mt-6 w-full rounded-lg border border-border bg-muted/30 p-4 text-left">
             <div className="mb-3 border-b border-dashed border-border pb-3 text-center">
               <h3 className="text-base font-semibold text-foreground">
-                Guitar Shop
+                {branchName}
               </h3>
               <p className="text-xs text-muted-foreground">
-                123 Đường Âm Nhạc, Quận 1, TP.HCM
+                {branchAddress}
               </p>
-              <p className="text-xs text-muted-foreground">Tel: 028-1234-5678</p>
             </div>
 
             <div className="mb-3 space-y-1 text-xs">
@@ -93,7 +98,7 @@ export function SuccessModal({
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Thu ngân:</span>
-                <span className="text-foreground">Nhân viên</span>
+                <span className="text-foreground">{cashierName}</span>
               </div>
               {!customerInfo.isWalkIn && customerInfo.name && (
                 <div className="flex justify-between">

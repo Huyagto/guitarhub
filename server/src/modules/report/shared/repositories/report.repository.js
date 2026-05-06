@@ -41,6 +41,9 @@ const isStoreOrder = (order) => {
     return shippingInfo.type === 'pos' || !order.customerId;
 };
 
+const isBusinessOrder = (order) => order.status !== 'CANCELLED';
+const isRevenueOrder = (order) => isBusinessOrder(order) && order.paymentStatus === 'PAID';
+
 const buildInventoryItem = (product) => ({
     id: String(product.id),
     productId: String(product.id),
@@ -125,8 +128,14 @@ const buildKpi = ({ orders, customers }) => {
     const previousPeriodStart = new Date(currentPeriodStart);
     previousPeriodStart.setDate(previousPeriodStart.getDate() - REPORT_WINDOW_DAYS);
 
-    const currentOrders = orders.filter((order) => order.createdAt >= currentPeriodStart);
-    const previousOrders = orders.filter(
+    const businessOrders = orders.filter(isBusinessOrder);
+    const revenueOrders = orders.filter(isRevenueOrder);
+    const currentOrders = businessOrders.filter((order) => order.createdAt >= currentPeriodStart);
+    const previousOrders = businessOrders.filter(
+        (order) => order.createdAt >= previousPeriodStart && order.createdAt < currentPeriodStart,
+    );
+    const currentRevenueOrders = revenueOrders.filter((order) => order.createdAt >= currentPeriodStart);
+    const previousRevenueOrders = revenueOrders.filter(
         (order) => order.createdAt >= previousPeriodStart && order.createdAt < currentPeriodStart,
     );
     const currentCustomers = customers.filter((customer) => customer.createdAt >= currentPeriodStart);
@@ -134,10 +143,10 @@ const buildKpi = ({ orders, customers }) => {
         (customer) => customer.createdAt >= previousPeriodStart && customer.createdAt < currentPeriodStart,
     );
 
-    const currentRevenue = currentOrders.reduce((sum, order) => sum + toNumber(order.total), 0);
-    const previousRevenue = previousOrders.reduce((sum, order) => sum + toNumber(order.total), 0);
-    const currentAvgOrderValue = currentOrders.length ? currentRevenue / currentOrders.length : 0;
-    const previousAvgOrderValue = previousOrders.length ? previousRevenue / previousOrders.length : 0;
+    const currentRevenue = currentRevenueOrders.reduce((sum, order) => sum + toNumber(order.total), 0);
+    const previousRevenue = previousRevenueOrders.reduce((sum, order) => sum + toNumber(order.total), 0);
+    const currentAvgOrderValue = currentRevenueOrders.length ? currentRevenue / currentRevenueOrders.length : 0;
+    const previousAvgOrderValue = previousRevenueOrders.length ? previousRevenue / previousRevenueOrders.length : 0;
 
     return {
         totalRevenue: currentRevenue,
@@ -156,7 +165,10 @@ const buildMonthlyData = (orders, customers, products) => {
 
     return slots.map((slot) => {
         const monthOrders = orders.filter(
-            (order) => order.createdAt >= slot.startAt && order.createdAt < slot.endAt,
+            (order) => isBusinessOrder(order) && order.createdAt >= slot.startAt && order.createdAt < slot.endAt,
+        );
+        const monthRevenueOrders = orders.filter(
+            (order) => isRevenueOrder(order) && order.createdAt >= slot.startAt && order.createdAt < slot.endAt,
         );
         const monthCustomers = customers.filter(
             (customer) => customer.createdAt >= slot.startAt && customer.createdAt < slot.endAt,
@@ -167,14 +179,14 @@ const buildMonthlyData = (orders, customers, products) => {
 
         return {
             month: slot.month,
-            sales: monthOrders.reduce((sum, order) => sum + toNumber(order.total), 0),
+            sales: monthRevenueOrders.reduce((sum, order) => sum + toNumber(order.total), 0),
             orders: monthOrders.length,
             onlineOrders: monthOrders.filter((order) => !isStoreOrder(order)).length,
             storeOrders: monthOrders.filter(isStoreOrder).length,
-            onlineRevenue: monthOrders
+            onlineRevenue: monthRevenueOrders
                 .filter((order) => !isStoreOrder(order))
                 .reduce((sum, order) => sum + toNumber(order.total), 0),
-            storeRevenue: monthOrders
+            storeRevenue: monthRevenueOrders
                 .filter(isStoreOrder)
                 .reduce((sum, order) => sum + toNumber(order.total), 0),
             customers: monthCustomers.length,
@@ -184,19 +196,21 @@ const buildMonthlyData = (orders, customers, products) => {
 };
 
 const buildOrderChannels = (orders) => {
-    const onlineOrders = orders.filter((order) => !isStoreOrder(order));
-    const storeOrders = orders.filter(isStoreOrder);
+    const businessOrders = orders.filter(isBusinessOrder);
+    const revenueOrders = orders.filter(isRevenueOrder);
+    const onlineOrders = businessOrders.filter((order) => !isStoreOrder(order));
+    const storeOrders = businessOrders.filter(isStoreOrder);
 
     const sumRevenue = (items) => items.reduce((sum, order) => sum + toNumber(order.total), 0);
 
     return {
         online: {
             orders: onlineOrders.length,
-            revenue: sumRevenue(onlineOrders),
+            revenue: sumRevenue(revenueOrders.filter((order) => !isStoreOrder(order))),
         },
         store: {
             orders: storeOrders.length,
-            revenue: sumRevenue(storeOrders),
+            revenue: sumRevenue(revenueOrders.filter(isStoreOrder)),
         },
     };
 };
@@ -204,7 +218,7 @@ const buildOrderChannels = (orders) => {
 const buildBranchBreakdown = (orders) => {
     const stats = new Map();
 
-    for (const order of orders) {
+    for (const order of orders.filter(isBusinessOrder)) {
         const key = order.branchId || 'unknown';
         const current = stats.get(key) || {
             branchId: order.branchId ? String(order.branchId) : null,
@@ -214,7 +228,9 @@ const buildBranchBreakdown = (orders) => {
         };
 
         current.orders += 1;
-        current.revenue += toNumber(order.total);
+        if (isRevenueOrder(order)) {
+            current.revenue += toNumber(order.total);
+        }
         stats.set(key, current);
     }
 
@@ -224,7 +240,7 @@ const buildBranchBreakdown = (orders) => {
 const buildCategoryDistribution = (orders, products) => {
     const revenueByCategory = new Map();
 
-    for (const order of orders) {
+    for (const order of orders.filter(isRevenueOrder)) {
         for (const item of order.items) {
             const categoryName = item.product?.category?.name || 'Khac';
             const lineRevenue = toNumber(item.unitPrice) * item.quantity;
@@ -254,7 +270,7 @@ const buildCategoryDistribution = (orders, products) => {
 const buildTopProducts = (orders) => {
     const stats = new Map();
 
-    for (const order of orders) {
+    for (const order of orders.filter(isRevenueOrder)) {
         for (const item of order.items) {
             const current = stats.get(item.productId) || {
                 name: item.productName,
@@ -274,7 +290,7 @@ const buildTopProducts = (orders) => {
 };
 
 const buildRecentOrders = (orders) => {
-    return orders.slice(0, 5).map((order) => ({
+    return orders.filter(isBusinessOrder).slice(0, 5).map((order) => ({
         id: String(order.id),
         customerId: order.customerId ? String(order.customerId) : null,
         orderNumber: order.orderNumber,

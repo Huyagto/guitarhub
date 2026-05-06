@@ -8,7 +8,18 @@ const customerAuthResponseDto = require('../dto');
 const register = async (req, res, next) => {
     try {
         validateRequest(req);
-        const user = await customerAuthService.registerCustomer(req.body);
+        const metadata = await customerAuthService.registerCustomer(req.body);
+        return new Created({
+            message: 'Ma OTP da duoc gui den email cua ban',
+            metadata,
+        }).send(res);
+    } catch (error) { next(error); }
+};
+
+const verifyRegistration = async (req, res, next) => {
+    try {
+        validateRequest(req);
+        const user = await customerAuthService.verifyCustomerRegistration(req.body.email, req.body.otp);
         return new Created({
             message: 'Dang ky thanh cong',
             metadata: customerAuthResponseDto.toCustomerProfileResponse(user),
@@ -137,6 +148,7 @@ const googleCallback = async (req, res, next) => {
 
 module.exports = {
     register,
+    verifyRegistration,
     login,
     logout,
     refreshToken,

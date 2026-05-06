@@ -75,7 +75,7 @@ export function SiteFooter() {
           <div className="col-span-2">
             <Link href="/" className="inline-block">
               <span className="text-xl font-bold tracking-tight text-foreground">
-                Guitar<span className="text-accent">Store</span>
+                Guitar<span className="text-accent">Hub</span>
               </span>
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
@@ -152,7 +152,7 @@ export function SiteFooter() {
             <ul className="mt-4 space-y-3">
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
                 <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                <span>123 Đường Âm Nhạc<br />Quận 1, TP. Hồ Chí Minh</span>
+                <span>Hệ thống cửa hàng GuitarHub<br />TP. Hồ Chí Minh</span>
               </li>
               <li>
                 <a
@@ -165,11 +165,11 @@ export function SiteFooter() {
               </li>
               <li>
                 <a
-                  href="mailto:support@guitarstore.com"
+                  href="mailto:support@guitarhub.vn"
                   className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                   <Mail className="h-4 w-4" />
-                  support@guitarstore.com
+                  support@guitarhub.vn
                 </a>
               </li>
             </ul>
@@ -181,7 +181,7 @@ export function SiteFooter() {
       <div className="border-t border-border">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-6 text-center md:flex-row lg:px-8">
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} GuitarStore. Đã đăng ký bản quyền.
+            &copy; {new Date().getFullYear()} GuitarHub. Đã đăng ký bản quyền.
           </p>
           <div className="flex gap-6">
             {footerLinks.legal.map((item) => (

@@ -65,9 +65,9 @@ export default function BranchReportsPage() {
   }, [branchId, startDate, endDate])
 
   const selectedBranch = branches.find((branch) => branch.id === branchId)
-  const totalStock = useMemo(() => inventory.reduce((sum, item) => sum + item.stock, 0), [inventory])
-  const lowStockItems = useMemo(() => inventory.filter((item) => item.stock > 0 && item.stock <= item.minStock).length, [inventory])
-  const outOfStockItems = useMemo(() => inventory.filter((item) => item.stock === 0).length, [inventory])
+  const totalStock = useMemo(() => inventory.reduce((sum, item) => sum + item.currentStock, 0), [inventory])
+  const lowStockItems = useMemo(() => inventory.filter((item) => item.currentStock > 0 && item.currentStock <= item.minStock).length, [inventory])
+  const outOfStockItems = useMemo(() => inventory.filter((item) => item.currentStock === 0).length, [inventory])
 
   return (
     <div className="min-h-screen">
@@ -213,10 +213,10 @@ export default function BranchReportsPage() {
                   {inventory.slice(0, 8).map((item) => (
                     <div key={item.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{item.name}</p>
+                        <p className="truncate text-sm font-medium">{item.productName}</p>
                         <p className="text-xs text-muted-foreground">{item.branchName || "Tổng chi nhánh"}</p>
                       </div>
-                      <span className="text-sm font-semibold">{item.stock}</span>
+                      <span className="text-sm font-semibold">{item.currentStock}</span>
                     </div>
                   ))}
                   {inventory.length === 0 ? (

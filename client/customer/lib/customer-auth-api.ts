@@ -13,6 +13,7 @@ interface RegisterPayload {
   fullName: string
   email: string
   password: string
+  phone?: string
 }
 
 interface LoginPayload {
@@ -68,12 +69,32 @@ export interface CustomerOrder {
     email: string
   } | null
   lineItems: CustomerOrderLineItem[]
+  statusHistory?: Array<{
+    id: string
+    fromStatus: OrderStatus | null
+    toStatus: OrderStatus
+    note: string
+    createdAt: string
+    changedBy: {
+      id: string
+      fullName: string
+      email: string
+      role: string
+    } | null
+  }>
 }
 
 export async function registerCustomer(payload: RegisterPayload) {
-  return apiRequest<AuthUser>("/api/auth/register", {
+  return apiRequest<{ email: string; expiresInMinutes: number }>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(payload),
+  })
+}
+
+export async function verifyCustomerRegistration(email: string, otp: string) {
+  return apiRequest<AuthUser>("/api/auth/register/verify", {
+    method: "POST",
+    body: JSON.stringify({ email, otp }),
   })
 }
 
@@ -161,6 +182,23 @@ export async function getCustomerGoogleAuthUrl() {
 
 export async function getCustomerOrders(accessToken: string) {
   return apiRequest<CustomerOrder[]>("/api/orders", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+}
+
+export async function getCustomerOrder(accessToken: string, orderId: string) {
+  return apiRequest<CustomerOrder>(`/api/orders/${orderId}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+}
+
+export async function cancelCustomerOrder(accessToken: string, orderId: string) {
+  return apiRequest<CustomerOrder>(`/api/orders/${orderId}/cancel`, {
+    method: "PATCH",
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },

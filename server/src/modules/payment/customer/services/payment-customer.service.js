@@ -367,7 +367,7 @@ const createZalopayUrl = async ({ amount, orderCode, userId, items }) => {
         throw new BadRequestError(payload.return_message || 'Khoi tao thanh toan ZaloPay that bai');
     }
 
-    paymentSessionStore.updateSession(orderCode, {
+    await paymentSessionStore.updateSession(orderCode, {
         providerTransactionId: appTransId,
     });
 
@@ -412,7 +412,7 @@ const createCheckout = async (userId, payload, req) => {
         decrementStock: payload.paymentMethod === 'cod',
     });
 
-    paymentSessionStore.saveSession({
+    await paymentSessionStore.saveSession({
         orderCode,
         userId,
         paymentMethod: payload.paymentMethod,
@@ -463,7 +463,7 @@ const createCheckout = async (userId, payload, req) => {
 
 const handleVnpayCallback = async (query) => {
     const secureHash = query.vnp_SecureHash;
-    const session = paymentSessionStore.getSession(query.vnp_TxnRef);
+    const session = await paymentSessionStore.getSession(query.vnp_TxnRef);
 
     if (!session) {
         return `${customerAppUrl}/checkout/success?status=failed&paymentMethod=vnpay`;
@@ -479,7 +479,7 @@ const handleVnpayCallback = async (query) => {
         String(secureHash || '').toLowerCase() === String(expectedHash).toLowerCase()
         && query.vnp_ResponseCode === '00';
 
-    paymentSessionStore.updateSession(session.orderCode, {
+    await paymentSessionStore.updateSession(session.orderCode, {
         status: isSuccess ? 'completed' : 'failed',
     });
 
@@ -506,14 +506,14 @@ const handleVnpayCallback = async (query) => {
 
 const handleMomoCallback = async (payload) => {
     const orderCode = payload.orderId || payload.requestId;
-    const session = paymentSessionStore.getSession(orderCode);
+    const session = await paymentSessionStore.getSession(orderCode);
 
     if (!session) {
         return `${customerAppUrl}/checkout/success?status=failed&paymentMethod=momo`;
     }
 
     const isSuccess = String(payload.resultCode || payload.errorCode || '') === '0';
-    paymentSessionStore.updateSession(orderCode, {
+    await paymentSessionStore.updateSession(orderCode, {
         status: isSuccess ? 'completed' : 'failed',
     });
 
@@ -547,10 +547,10 @@ const handleZalopayCallback = async (payload) => {
 
     const callbackData = JSON.parse(payload.data);
     const orderCode = callbackData.app_trans_id?.split('_')[1];
-    const session = paymentSessionStore.getSession(orderCode);
+    const session = await paymentSessionStore.getSession(orderCode);
 
     if (session) {
-        paymentSessionStore.updateSession(orderCode, { status: 'completed' });
+        await paymentSessionStore.updateSession(orderCode, { status: 'completed' });
         const updatedOrder = await orderRepository.updatePayment(orderCode, {
             paymentStatus: 'paid',
             status: 'pending_confirmation',

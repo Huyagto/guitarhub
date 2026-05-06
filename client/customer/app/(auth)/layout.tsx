@@ -14,7 +14,7 @@ export default function AuthLayout({
           <div className="mb-8">
             <Link href="/" className="inline-block">
               <span className="text-2xl font-bold tracking-tight text-foreground">
-                Guitar<span className="text-accent">Store</span>
+                Guitar<span className="text-accent">Hub</span>
               </span>
             </Link>
           </div>
@@ -35,7 +35,7 @@ export default function AuthLayout({
         <div className="absolute inset-0 flex items-center justify-center p-12">
           <div className="max-w-md text-center">
             <h2 className="text-3xl font-bold text-primary-foreground">
-              Chào mừng đến với GuitarStore
+              Chào mừng đến với GuitarHub
             </h2>
             <p className="mt-4 text-lg text-primary-foreground/80">
               Điểm đến dành cho guitar và phụ kiện cao cấp. Cùng tham gia cộng đồng yêu nhạc của chúng tôi.

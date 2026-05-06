@@ -8,7 +8,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: 'GuitarHub POS - Hệ Thống Bán Hàng',
-  description: 'Hệ thống bán hàng tại quầy dành cho Guitar Shop',
+  description: 'Hệ thống bán hàng tại quầy dành cho GuitarHub',
   generator: 'v0.app',
   icons: {
     icon: '/icon.svg',

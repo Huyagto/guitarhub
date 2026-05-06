@@ -7,6 +7,7 @@ module.exports = {
     loginCustomerValidator: require('./login-customer.validator'),
     forgotCustomerPasswordValidator: require('./forgot-customer-password.validator'),
     verifyCustomerOtpValidator: require('./verify-customer-otp.validator'),
+    verifyCustomerRegistrationValidator: require('./verify-customer-registration.validator'),
     resetCustomerPasswordValidator: require('./reset-customer-password.validator'),
     updateCustomerProfileValidator: require('./update-customer-profile.validator'),
     updateCustomerDefaultShippingAddressValidator: require('./update-customer-default-shipping-address.validator'),

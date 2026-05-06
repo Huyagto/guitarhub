@@ -88,8 +88,8 @@ export interface CreatePosOrderPayload {
   customerPhone?: string
   note?: string
   paymentMethod: PaymentMethod
+  voucherCode?: string
   items: PosOrderItem[]
-  totals: { discountAmount: number }
 }
 
 export interface PosOrderResult {

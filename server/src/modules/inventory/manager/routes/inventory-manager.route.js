@@ -11,6 +11,9 @@ const router = express.Router();
 router.use(authenticate, authorize(roles.MANAGER));
 
 router.get('/', inventoryManagerController.getInventory);
+router.get('/transactions', inventoryManagerController.getInventoryTransactions);
 router.post('/:id/restock', restockInventoryValidator, inventoryManagerController.restockInventory);
+router.post('/:id/issue', restockInventoryValidator, inventoryManagerController.issueInventory);
+router.post('/:id/stocktake', inventoryManagerController.stocktakeInventory);
 
 module.exports = router;

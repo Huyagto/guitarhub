@@ -231,14 +231,14 @@ export async function updateManagerBranch(id: string, payload: Partial<Branch>) 
   })
 }
 
-export async function createManagerStaff(payload: { fullName: string; email: string; phone?: string; password: string }) {
+export async function createManagerStaff(payload: { fullName: string; email: string; phone?: string; password: string; branchId?: string }) {
   return managerRequest<Staff>("/api/manager/staffs", {
     method: "POST",
     body: JSON.stringify(payload),
   })
 }
 
-export async function updateManagerStaff(id: string, payload: { fullName?: string; email?: string; phone?: string; isActive?: boolean }) {
+export async function updateManagerStaff(id: string, payload: { fullName?: string; email?: string; phone?: string; isActive?: boolean; branchId?: string }) {
   return managerRequest<Staff>(`/api/manager/staffs/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload),

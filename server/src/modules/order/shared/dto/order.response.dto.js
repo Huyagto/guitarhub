@@ -52,6 +52,19 @@ const toOrderResponseDto = (order) => ({
         unitPrice: toNumber(item.unitPrice),
         lineTotal: toNumber(item.unitPrice) * item.quantity,
     })),
+    statusHistory: (order.statusHistory || []).map((item) => ({
+        id: String(item.id),
+        fromStatus: item.fromStatus ? DB_ORDER_STATUS_TO_APP[item.fromStatus] || item.fromStatus.toLowerCase() : null,
+        toStatus: DB_ORDER_STATUS_TO_APP[item.toStatus] || item.toStatus.toLowerCase(),
+        note: item.note || '',
+        createdAt: item.createdAt.toISOString(),
+        changedBy: item.changedByUser ? {
+            id: String(item.changedByUser.id),
+            fullName: item.changedByUser.fullName,
+            email: item.changedByUser.email,
+            role: String(item.changedByUser.role || '').toLowerCase(),
+        } : null,
+    })),
 });
 
 module.exports = { toOrderResponseDto };

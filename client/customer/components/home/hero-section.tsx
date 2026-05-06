@@ -25,7 +25,7 @@ export function HeroSection() {
               <p className="mt-6 text-lg leading-8 text-primary-foreground/80 text-pretty">
                 Khám phá bộ sưu tập guitar và phụ kiện cao cấp được tuyển chọn kỹ lưỡng. Từ acoustic đến electric, cây đàn phù hợp đang chờ bạn.
               </p>
-              <div className="mt-10 flex items-center gap-x-4">
+              <div className="mt-10 flex flex-wrap items-center gap-3">
                 <Button
                   asChild
                   size="lg"
@@ -40,22 +40,25 @@ export function HeroSection() {
                   asChild
                   variant="outline"
                   size="lg"
-                  className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10"
+                  className="border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground"
                 >
                   <Link href="/shop?category=acoustic-guitar">
                     Xem guitar acoustic
                   </Link>
                 </Button>
-              </div>
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Button asChild variant="secondary" size="lg">
+                <Button
+                  asChild
+                  variant="secondary"
+                  size="lg"
+                  className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+                >
                   <Link href="/login">Đăng nhập</Link>
                 </Button>
                 <Button
                   asChild
                   variant="outline"
                   size="lg"
-                  className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10"
+                  className="border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground"
                 >
                   <Link href="/register">Tạo tài khoản</Link>
                 </Button>

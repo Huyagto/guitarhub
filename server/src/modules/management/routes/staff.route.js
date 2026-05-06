@@ -8,7 +8,8 @@ const { roles } = require('../../auth/constants');
 const router = express.Router();
 
 router.use(authenticate, authorize(roles.STAFF));
-router.get('/catalog', controller.getPosCatalog);
 router.post('/vouchers/validate', controller.validatePosVoucher);
+router.get('/shifts', controller.getShiftCloses);
+router.post('/shifts/close', controller.closeShift);
 
 module.exports = router;

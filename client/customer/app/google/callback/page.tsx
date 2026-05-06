@@ -59,7 +59,7 @@ export default function GoogleCallbackPage() {
     }
 
     if ("error" in result) {
-      setError(result.error)
+      setError(result.error || "Khong the xu ly dang nhap Google.")
       return
     }
 

@@ -5,15 +5,35 @@ const { database: prisma } = require('../../../config');
 const { roles } = require('../../auth/constants');
 const { hashPassword } = require('../../../core/utils');
 const reportRepository = require('../../report/shared/repositories/report.repository');
-const store = require('../data/management.store');
-
-const assertCollection = (collection) => {
-    if (!store.collections.includes(collection)) {
-        throw new BadRequestError('Collection khong hop le');
-    }
-};
 
 const toNumber = (value) => Number(value || 0);
+
+const getStaffWithBranch = async (staffId) => {
+    const staff = await prisma.user.findUnique({
+        where: { id: Number(staffId) },
+        include: {
+            branch: {
+                select: { id: true, name: true, code: true },
+            },
+        },
+    });
+
+    if (!staff?.branchId || !staff.branch) {
+        throw new BadRequestError('Nhan vien chua duoc gan chi nhanh');
+    }
+
+    return staff;
+};
+
+const getTodayRange = () => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    return { start, end };
+};
 
 const toVoucherResponse = (voucher) => ({
     id: String(voucher.id),
@@ -37,11 +57,6 @@ const resolveVoucherStatus = (status, expiresAt) => {
     }
 
     return 'ACTIVE';
-};
-
-const getCollectionItems = (collection) => {
-    assertCollection(collection);
-    return store.getCollection(collection);
 };
 
 const getCustomers = async () => {
@@ -76,28 +91,7 @@ const getCustomers = async () => {
     });
 };
 
-const createCollectionItem = (collection, payload) => {
-    assertCollection(collection);
-    return store.createItem(collection, payload);
-};
-
-const updateCollectionItem = (collection, id, payload) => {
-    assertCollection(collection);
-    const item = store.updateItem(collection, id, payload);
-    if (!item) throw new NotFoundError('Khong tim thay du lieu can cap nhat');
-    return item;
-};
-
-const deleteCollectionItem = (collection, id) => {
-    assertCollection(collection);
-    const item = store.removeItem(collection, id);
-    if (!item) throw new NotFoundError('Khong tim thay du lieu can xoa');
-    return item;
-};
-
 const getDashboardOverview = async () => reportRepository.getDashboardOverview();
-
-const getReportsSummary = async () => reportRepository.getSummary();
 
 const getVouchers = async () => {
     const vouchers = await prisma.voucher.findMany({
@@ -170,25 +164,6 @@ const deleteVoucher = async (id) => {
         throw new NotFoundError('Khong tim thay ma giam gia');
     }
 };
-
-const restockInventoryItem = (id, quantity) => {
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-        throw new BadRequestError('So luong nhap them phai lon hon 0');
-    }
-
-    const item = store.restockInventoryItem(id, quantity);
-    if (!item) throw new NotFoundError('Khong tim thay mat hang ton kho');
-    return item;
-};
-
-const updateOrderStatus = (id, status) => {
-    if (!status) throw new BadRequestError('Trang thai don hang la bat buoc');
-    const order = store.updateOrderStatus(id, status);
-    if (!order) throw new NotFoundError('Khong tim thay don hang');
-    return order;
-};
-
-const getPosCatalog = () => store.getPosCatalog();
 
 const generateStaffCode = async () => {
     const START = 10000;
@@ -414,7 +389,15 @@ const deleteStaff = async (id) => {
     const existing = await prisma.user.findUnique({ where: { id: staffId } });
     if (!existing || existing.role !== roles.STAFF) throw new NotFoundError('Không tìm thấy nhân viên');
 
-    const user = await prisma.user.delete({ where: { id: staffId } });
+    const user = await prisma.user.update({
+        where: { id: staffId },
+        data: { isActive: false },
+        include: {
+            branch: {
+                select: { id: true, name: true, code: true },
+            },
+        },
+    });
     return toStaffResponse(user);
 };
 
@@ -484,24 +467,150 @@ const validatePosVoucher = async (code, subtotal) => {
     };
 };
 
+const toShiftCloseResponse = (record) => ({
+    id: String(record.id),
+    staffId: String(record.staffId),
+    staffName: record.staff?.fullName || '',
+    branchId: String(record.branchId),
+    branchName: record.branch ? `${record.branch.code} - ${record.branch.name}` : '',
+    businessDate: record.businessDate.toISOString(),
+    closedAt: record.closedAt.toISOString(),
+    orderCount: record.orderCount,
+    storeOrderCount: record.storeOrderCount,
+    onlineOrderCount: record.onlineOrderCount,
+    revenue: toNumber(record.revenue),
+    cashRevenue: toNumber(record.cashRevenue),
+    transferRevenue: toNumber(record.transferRevenue),
+    note: record.note || '',
+});
+
+const getShiftCloses = async (staffId) => {
+    const staff = await getStaffWithBranch(staffId);
+    const records = await prisma.shiftClose.findMany({
+        where: { branchId: staff.branchId },
+        orderBy: { closedAt: 'desc' },
+        take: 20,
+        include: {
+            staff: { select: { fullName: true } },
+            branch: { select: { name: true, code: true } },
+        },
+    });
+
+    return records.map(toShiftCloseResponse);
+};
+
+const closeShift = async (staffId, { note } = {}) => {
+    const staff = await getStaffWithBranch(staffId);
+    const { start, end } = getTodayRange();
+    const openedShift = await prisma.shiftSession.findFirst({
+        where: {
+            staffId: Number(staffId),
+            branchId: staff.branchId,
+            status: 'OPEN',
+        },
+        orderBy: { openedAt: 'desc' },
+    });
+    const shiftStart = openedShift?.openedAt || start;
+
+    const orders = await prisma.order.findMany({
+        where: {
+            branchId: staff.branchId,
+            createdAt: { gte: shiftStart, lt: end },
+            status: { not: 'CANCELLED' },
+        },
+        select: {
+            customerId: true,
+            total: true,
+            paymentMethod: true,
+            paymentStatus: true,
+        },
+    });
+
+    const paidOrders = orders.filter((order) => order.paymentStatus === 'PAID');
+    const cashMethods = new Set(['CASH', 'COD']);
+
+    const record = await prisma.shiftClose.create({
+        data: {
+            staffId: Number(staffId),
+            branchId: staff.branchId,
+            businessDate: shiftStart,
+            orderCount: orders.length,
+            storeOrderCount: orders.filter((order) => !order.customerId).length,
+            onlineOrderCount: orders.filter((order) => order.customerId).length,
+            revenue: paidOrders.reduce((sum, order) => sum + toNumber(order.total), 0),
+            cashRevenue: paidOrders
+                .filter((order) => cashMethods.has(order.paymentMethod))
+                .reduce((sum, order) => sum + toNumber(order.total), 0),
+            transferRevenue: paidOrders
+                .filter((order) => !cashMethods.has(order.paymentMethod))
+                .reduce((sum, order) => sum + toNumber(order.total), 0),
+            note: note ? String(note).trim() : null,
+        },
+        include: {
+            staff: { select: { fullName: true } },
+            branch: { select: { name: true, code: true } },
+        },
+    });
+
+    await prisma.shiftSession.upsert({
+        where: { id: openedShift?.id || 0 },
+        update: {
+            status: 'CLOSED',
+            closedAt: new Date(),
+            orderCount: orders.length,
+            storeOrderCount: orders.filter((order) => !order.customerId).length,
+            onlineOrderCount: orders.filter((order) => order.customerId).length,
+            revenue: paidOrders.reduce((sum, order) => sum + toNumber(order.total), 0),
+            cashRevenue: paidOrders
+                .filter((order) => cashMethods.has(order.paymentMethod))
+                .reduce((sum, order) => sum + toNumber(order.total), 0),
+            transferRevenue: paidOrders
+                .filter((order) => !cashMethods.has(order.paymentMethod))
+                .reduce((sum, order) => sum + toNumber(order.total), 0),
+            note: note ? String(note).trim() : null,
+        },
+        create: {
+            staffId: Number(staffId),
+            branchId: staff.branchId,
+            status: 'CLOSED',
+            openedAt: start,
+            closedAt: new Date(),
+            orderCount: orders.length,
+            storeOrderCount: orders.filter((order) => !order.customerId).length,
+            onlineOrderCount: orders.filter((order) => order.customerId).length,
+            revenue: paidOrders.reduce((sum, order) => sum + toNumber(order.total), 0),
+            cashRevenue: paidOrders
+                .filter((order) => cashMethods.has(order.paymentMethod))
+                .reduce((sum, order) => sum + toNumber(order.total), 0),
+            transferRevenue: paidOrders
+                .filter((order) => !cashMethods.has(order.paymentMethod))
+                .reduce((sum, order) => sum + toNumber(order.total), 0),
+            note: note ? String(note).trim() : null,
+        },
+    });
+
+    await prisma.shiftSession.create({
+        data: {
+            staffId: Number(staffId),
+            branchId: staff.branchId,
+            status: 'OPEN',
+            openedAt: new Date(),
+        },
+    });
+
+    return toShiftCloseResponse(record);
+};
+
 module.exports = {
-    getCollectionItems,
     getCustomers,
     getBranches,
     createBranch,
     updateBranch,
-    createCollectionItem,
-    updateCollectionItem,
-    deleteCollectionItem,
     getDashboardOverview,
-    getReportsSummary,
     getVouchers,
     createVoucher,
     updateVoucher,
     deleteVoucher,
-    restockInventoryItem,
-    updateOrderStatus,
-    getPosCatalog,
     getStaffs,
     createStaff,
     updateStaff,
@@ -509,4 +618,6 @@ module.exports = {
     regenerateStaffCode,
     resetStaffPassword,
     validatePosVoucher,
+    getShiftCloses,
+    closeShift,
 };

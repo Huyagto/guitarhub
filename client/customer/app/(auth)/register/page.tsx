@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { getErrorMessage } from "@/lib/api"
-import { getCustomerGoogleAuthUrl, registerCustomer } from "@/lib/customer-auth-api"
+import { getCustomerGoogleAuthUrl, registerCustomer, verifyCustomerRegistration } from "@/lib/customer-auth-api"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -19,6 +19,9 @@ export default function RegisterPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState("")
   const [termsError, setTermsError] = useState("")
+  const [otpSent, setOtpSent] = useState(false)
+  const [otp, setOtp] = useState("")
+  const [registeredEmail, setRegisteredEmail] = useState("")
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -56,12 +59,30 @@ export default function RegisterPage() {
       await registerCustomer({
         fullName: formData.fullName,
         email: formData.email,
+        phone: formData.phone,
         password: formData.password,
       })
 
-      router.push("/login")
+      setRegisteredEmail(formData.email)
+      setOtpSent(true)
+      setError("")
     } catch (error) {
       setError(getErrorMessage(error, "Tạo tài khoản thất bại"))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setIsLoading(true)
+
+    try {
+      await verifyCustomerRegistration(registeredEmail || formData.email, otp)
+      router.push("/login")
+    } catch (error) {
+      setError(getErrorMessage(error, "Xác thực OTP thất bại"))
     } finally {
       setIsLoading(false)
     }
@@ -136,6 +157,44 @@ export default function RegisterPage() {
         </div>
       </div>
 
+      {otpSent ? (
+        <form onSubmit={handleVerifyOtp} className="mt-5 space-y-5">
+          {error ? (
+            <div className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          ) : null}
+          <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+            Mã OTP đã được gửi đến {registeredEmail || formData.email}. Nhập mã gồm 6 chữ số để hoàn tất đăng ký.
+          </div>
+          <div>
+            <Label htmlFor="otp">Mã OTP</Label>
+            <Input
+              id="otp"
+              inputMode="numeric"
+              maxLength={6}
+              required
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              className="mt-2"
+              placeholder="Nhập mã gồm 6 chữ số"
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={isLoading || otp.length !== 6}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Đang xác thực...
+              </>
+            ) : (
+              "Hoàn tất đăng ký"
+            )}
+          </Button>
+          <Button type="button" variant="ghost" className="w-full" onClick={() => setOtpSent(false)} disabled={isLoading}>
+            Sửa thông tin đăng ký
+          </Button>
+        </form>
+      ) : (
       <form onSubmit={handleSubmit} className="mt-5 space-y-5">
         {error ? (
           <div className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -313,6 +372,7 @@ export default function RegisterPage() {
           )}
         </Button>
       </form>
+      )}
     </div>
   )
 }

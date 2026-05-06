@@ -14,6 +14,7 @@ model User {
     password  String?
     fullName  String
     phone     String?
+    avatar    String?
     staffCode String?  @unique
     googleId  String?  @unique
     defaultShippingAddress Json?
@@ -26,6 +27,10 @@ model User {
     cart      Cart?
     orders    Order[]  @relation("CustomerOrders")
     handledOrders Order[] @relation("StaffHandledOrders")
+    shiftCloses ShiftClose[] @relation("StaffShiftCloses")
+    orderStatusHistories OrderStatusHistory[] @relation("OrderStatusChangedBy")
+    inventoryTransactions InventoryTransaction[] @relation("InventoryTransactionStaff")
+    shiftSessions ShiftSession[] @relation("StaffShiftSessions")
     branch    Branch?  @relation("BranchStaff", fields: [branchId], references: [id], onDelete: SetNull)
 
     @@index([branchId])
@@ -47,6 +52,9 @@ model Branch {
     staff     User[]            @relation("BranchStaff")
     inventory BranchInventory[]
     orders    Order[]
+    shiftCloses ShiftClose[]
+    inventoryTransactions InventoryTransaction[]
+    shiftSessions ShiftSession[]
 
     @@index([status])
     @@map("branches")
@@ -110,6 +118,7 @@ model Product {
     cartItems CartItem[]
     orderItems OrderItem[]
     branchInventory BranchInventory[]
+    inventoryTransactions InventoryTransaction[]
 
     @@index([categoryId])
     @@index([brandId])
@@ -209,6 +218,7 @@ model Order {
     handledByStaff User?      @relation("StaffHandledOrders", fields: [handledByStaffId], references: [id], onDelete: SetNull)
     branch         Branch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
     items          OrderItem[]
+    statusHistory  OrderStatusHistory[]
 
     @@index([customerId])
     @@index([handledByStaffId])
@@ -236,6 +246,97 @@ model OrderItem {
     @@index([orderId])
     @@index([productId])
     @@map("order_items")
+}
+
+model ShiftClose {
+    id              Int      @id @default(autoincrement())
+    staffId         Int
+    branchId        Int
+    businessDate    DateTime
+    orderCount      Int      @default(0)
+    storeOrderCount Int      @default(0)
+    onlineOrderCount Int     @default(0)
+    revenue         Decimal  @db.Decimal(10, 2)
+    cashRevenue     Decimal  @db.Decimal(10, 2)
+    transferRevenue Decimal  @db.Decimal(10, 2)
+    note            String?
+    closedAt        DateTime @default(now())
+    createdAt       DateTime @default(now())
+
+    staff  User   @relation("StaffShiftCloses", fields: [staffId], references: [id], onDelete: Restrict)
+    branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+    @@index([staffId])
+    @@index([branchId])
+    @@index([businessDate])
+    @@map("shift_closes")
+}
+
+model OrderStatusHistory {
+    id              Int         @id @default(autoincrement())
+    orderId         Int
+    fromStatus      OrderStatus?
+    toStatus        OrderStatus
+    changedByUserId Int?
+    note            String?
+    createdAt       DateTime    @default(now())
+
+    order         Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    changedByUser User? @relation("OrderStatusChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull)
+
+    @@index([orderId])
+    @@index([changedByUserId])
+    @@map("order_status_history")
+}
+
+model InventoryTransaction {
+    id             Int                      @id @default(autoincrement())
+    branchId       Int
+    productId      Int
+    staffId        Int?
+    type           InventoryTransactionType
+    quantity       Int
+    stockBefore    Int
+    stockAfter     Int
+    counterparty   String?
+    note           String?
+    createdAt      DateTime                 @default(now())
+
+    branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Restrict)
+    product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+    staff   User?   @relation("InventoryTransactionStaff", fields: [staffId], references: [id], onDelete: SetNull)
+
+    @@index([branchId])
+    @@index([productId])
+    @@index([staffId])
+    @@index([type])
+    @@map("inventory_transactions")
+}
+
+model ShiftSession {
+    id              Int         @id @default(autoincrement())
+    staffId         Int
+    branchId        Int
+    status          ShiftStatus @default(OPEN)
+    openedAt        DateTime    @default(now())
+    closedAt        DateTime?
+    orderCount      Int         @default(0)
+    storeOrderCount Int         @default(0)
+    onlineOrderCount Int        @default(0)
+    revenue         Decimal     @default(0) @db.Decimal(10, 2)
+    cashRevenue     Decimal     @default(0) @db.Decimal(10, 2)
+    transferRevenue Decimal     @default(0) @db.Decimal(10, 2)
+    note            String?
+    createdAt       DateTime    @default(now())
+    updatedAt       DateTime    @updatedAt
+
+    staff  User   @relation("StaffShiftSessions", fields: [staffId], references: [id], onDelete: Restrict)
+    branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+    @@index([staffId])
+    @@index([branchId])
+    @@index([status])
+    @@map("shift_sessions")
 }
 
 enum Role {
@@ -301,4 +402,18 @@ enum VoucherStatus {
     ACTIVE
     EXPIRED
     DISABLED
+}
+
+enum InventoryTransactionType {
+    RECEIVE
+    ISSUE
+    TRANSFER_IN
+    TRANSFER_OUT
+    STOCKTAKE
+    SALE
+}
+
+enum ShiftStatus {
+    OPEN
+    CLOSED
 }

@@ -89,12 +89,13 @@ const loginByStaffCode = async ({ staffCode, password }) => {
     return { user: omitPassword(user), ...tokens };
 };
 
-const updateUserProfile = async (userId, { fullName, phone }) => {
+const updateUserProfile = async (userId, { fullName, phone, avatar }) => {
     const user = await authRepository.findById(userId);
     if (!user) throw new NotFoundError('Không tìm thấy người dùng');
 
     const data = { fullName };
     if (phone !== undefined) data.phone = phone || null;
+    if (avatar !== undefined) data.avatar = avatar || null;
 
     const updatedUser = await authRepository.updateProfile(userId, data);
     return omitPassword(updatedUser);

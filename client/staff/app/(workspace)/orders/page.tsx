@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { BellRing, CheckCircle2, Clock3, Loader2, PackageCheck, Truck, XCircle } from "lucide-react"
+import { BellRing, CheckCircle2, Clock3, Loader2, PackageCheck, Printer, Truck, XCircle } from "lucide-react"
 import { getErrorMessage } from "@/lib/api"
 import { getStaffOrders, updateStaffOrderStatus } from "@/lib/order-api"
 import { getStaffSocket } from "@/lib/socket"
 import { getStoredStaffUser } from "@/lib/auth"
+import { printOrderReceipt } from "@/lib/staff-receipt"
 import type { StaffOrder, StaffOrderStatus } from "@/lib/order-types"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -418,6 +419,13 @@ export default function StaffOrdersPage() {
           ) : null}
 
           <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => selectedOrder && printOrderReceipt(selectedOrder, getStoredStaffUser())}
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              In hóa đơn
+            </Button>
             <Button variant="outline" onClick={() => setSelectedOrder(null)}>
               Đóng
             </Button>

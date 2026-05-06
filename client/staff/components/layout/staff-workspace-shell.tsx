@@ -160,10 +160,21 @@ export function StaffWorkspaceShell({ children }: { children: React.ReactNode })
     }
   }, [])
 
-  const activeSection = useMemo(
-    () => (pathname?.startsWith("/orders") ? "orders" : "pos"),
-    [pathname]
-  )
+  const activeSection = useMemo(() => {
+    if (pathname?.startsWith("/orders")) return "orders"
+    if (pathname?.startsWith("/history")) return "history"
+    if (pathname?.startsWith("/inventory")) return "inventory"
+    if (pathname?.startsWith("/shift")) return "shift"
+    return "pos"
+  }, [pathname])
+
+  const sectionLabel = {
+    pos: "Khu vực bán hàng tại quầy",
+    orders: "Xử lý đơn hàng online",
+    history: "Lịch sử đơn của chi nhánh",
+    inventory: "Tồn kho hiện có tại cửa hàng",
+    shift: "Tổng kết và đóng ca",
+  }[activeSection]
 
   const handleLogout = () => {
     disconnectStaffSocket()
@@ -174,26 +185,28 @@ export function StaffWorkspaceShell({ children }: { children: React.ReactNode })
   return (
     <AuthGuard>
       <div className="flex h-screen flex-col bg-background">
-        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-border bg-card/95 px-4 backdrop-blur">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-20 flex min-h-16 shrink-0 items-center gap-3 border-b border-border bg-card/95 px-4 py-2 backdrop-blur">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 via-rose-600 to-red-900 text-sm font-black text-white shadow-sm">
               GH
             </div>
-            <div>
+            <div className="hidden min-w-0 sm:block">
               <h1 className="text-base font-semibold text-foreground">GuitarHub Staff</h1>
-              <p className="text-xs text-muted-foreground">
-                {activeSection === "orders" ? "Xử lý đơn hàng online" : "Khu vực bán hàng tại quầy"}
+              <p className="max-w-40 truncate text-xs text-muted-foreground">
+                {sectionLabel}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden items-center gap-2 rounded-full border border-border bg-secondary/60 px-3 py-1.5 text-sm font-medium text-foreground lg:flex">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+            <div className="hidden max-w-44 items-center gap-2 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-sm font-medium text-foreground lg:flex">
               <MapPin className="h-4 w-4 text-primary" />
-              {branchLabel}
+              <span className="truncate">{branchLabel}</span>
             </div>
-            <StaffWorkspaceNav active={activeSection} ordersBadgeCount={onlineOrdersCount} />
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <StaffWorkspaceNav active={activeSection} ordersBadgeCount={onlineOrdersCount} />
+            </div>
+            <div className="hidden items-center gap-2 whitespace-nowrap text-sm text-muted-foreground md:flex">
               <Clock className="h-4 w-4" />
               {currentTime ? (
                 <>
@@ -202,11 +215,11 @@ export function StaffWorkspaceShell({ children }: { children: React.ReactNode })
                 </>
               ) : null}
             </div>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
+            <Button variant="outline" size="sm" className="shrink-0" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
-              Đăng xuất
+              <span className="hidden xl:inline">Đăng xuất</span>
             </Button>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
               {staffName.charAt(0).toUpperCase()}
             </div>
           </div>

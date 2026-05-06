@@ -16,7 +16,7 @@ const getOrders = async (req, res, next) => {
 const updateOrderStatus = async (req, res, next) => {
     try {
         validateRequest(req);
-        const metadata = await orderManagerService.updateOrderStatus(req.params.id, req.body.status);
+        const metadata = await orderManagerService.updateOrderStatus(req.params.id, req.body.status, req.user.id);
         return new OK({ message: 'Cập nhật trạng thái đơn hàng thành công', metadata }).send(res);
     } catch (error) {
         return next(error);
